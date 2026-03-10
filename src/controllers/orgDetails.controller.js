@@ -34,7 +34,7 @@ const addOrganizationDetails = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
 
-  const { orgCategory, description, startedInYear, businessSummary } = req.body;
+  const { orgCategory, description, startedInYear, sop } = req.body;
 
  
   const existingDetails = await OrganizationDetails.findOne({ where: { orgId: id } });
@@ -48,7 +48,7 @@ const addOrganizationDetails = asyncHandler(async (req, res) => {
     orgCategory,
     description,
     startedInYear :Number(startedInYear),
-    businessSummary,
+    sop,
   });
 
   return res.status(201).json(
@@ -63,7 +63,7 @@ const editOrganizationDetails = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
 
-  const { orgCategory, description, startedInYear, businessSummary } = req.body;
+  const { orgCategory, description, startedInYear, sop } = req.body;
 
   // 1. Find the existing record
   const details = await OrganizationDetails.findOne({ where: { orgId: id } });
@@ -77,7 +77,7 @@ const editOrganizationDetails = asyncHandler(async (req, res) => {
     orgCategory: orgCategory || details.orgCategory,
     description: description || details.description,
     startedInYear: Number(startedInYear) || Number(details.startedInYear),
-    businessSummary: businessSummary || details.businessSummary,
+    sop: sop || details.sop,
   });
 
   return res.json(

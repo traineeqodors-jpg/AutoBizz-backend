@@ -10,6 +10,7 @@ const tenantRouter = require("./src/routes/tenant.routes.js")
 const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
 
+
 const PORT = process.env.PORT;
 
 
@@ -28,7 +29,7 @@ app.use(express.json());
 app.use(cookieParser())
 app.use(express.urlencoded({extended : true}))
  app.use('/public', express.static('public'))
-
+ 
 app.get("/", (req,res) => {
   res.send("hello World")
 })

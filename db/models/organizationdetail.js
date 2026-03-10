@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
         len: { args: [10, 500], msg: "Description should be between 10 and 500 characters" }
       }
     },
-    businessSummary: {
+    sop: {
       type: DataTypes.TEXT,
       allowNull: true,
       validate: {
