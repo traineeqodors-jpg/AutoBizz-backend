@@ -3,10 +3,6 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 
 
-
-
-
-
 const generateSOPVideo = asyncHandler(async (req, res) => {
     const { tenantId, scriptContent, templateId } = req.body;
 
