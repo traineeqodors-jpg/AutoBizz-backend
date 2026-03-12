@@ -2,8 +2,8 @@
   "development": {
     "username": "postgres",
     "password": "12345",
-    "database": "autoBizz",
-    "host": "192.168.0.37",
+    "database": "autoBizzGit",
+    "host": "localhost",
     "dialect": "postgres"
   },
   "test": {

@@ -9,6 +9,7 @@ const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
 const tenantRouter = require("./src/routes/tenant.routes.js")
 const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
+const sopVideoRouter = require("./src/routes/sop.routes.js")
 
 const PORT = process.env.PORT;
 
@@ -37,7 +38,8 @@ app.use("/api/org" , orgRouter )
 app.use("/api/password" , passwordResetRouter)
 app.use("/api/tenant" , tenantRouter )
 app.use("/api/document" , documentRouter)
-app.use("/api/orgDetails" , orgDetailsRouter)
+app.use("/api/orgDetails", orgDetailsRouter)
+app.use("/api/generateSOP", sopVideoRouter)
 
 
 app.use(errorHandler);
