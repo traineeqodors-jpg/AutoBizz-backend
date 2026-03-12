@@ -8,6 +8,7 @@ const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
 const tenantRouter = require("./src/routes/tenant.routes.js");
 const documentRouter = require("./src/routes/document.routes.js");
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js");
+const { initPinecone } = require("./src/config/pinecone.js");
 
 const PORT = process.env.PORT;
 
@@ -43,6 +44,20 @@ app.use("/api/orgDetails", orgDetailsRouter);
 
 app.use(errorHandler);
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running at :${PORT}`);
-});
+const startServer = async () => {
+  try {
+    // 1. Initialize the single Pinecone index
+    const index = await initPinecone();
+
+    // 2. Save it to app.locals so all controllers can access it via req.app.locals
+    app.locals.pineconeIndex = index;
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server is running at :${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+  }
+};
+
+startServer();

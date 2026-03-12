@@ -5,8 +5,7 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { comparePassword } = require("../utils/authHelper");
 const jwt = require("jsonwebtoken");
-const path = require('path')
-
+const path = require("path");
 
 const Organization = db.Organization;
 
@@ -33,7 +32,7 @@ const generateAccessToken = async (id) => {
     const org = await Organization.findByPk(id);
 
     const accessToken = org.generateAccessToken();
-    return { accessToken};
+    return { accessToken };
   } catch (error) {
     console.error(error);
     throw new ApiError(
@@ -43,6 +42,7 @@ const generateAccessToken = async (id) => {
   }
 };
 
+// Register
 const registerOrg = asyncHandler(async (req, res) => {
   if (!req.body || Object.keys(req.body).length === 0) {
     throw new ApiError(400, "Request Body is Empty");
@@ -80,11 +80,30 @@ const registerOrg = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Cant Create Org");
   }
 
+  const { accessToken, refreshToken } = await generateAccessRefreshToken(
+    data.id,
+  );
+
+  const loggedInUser = data.toJSON();
+  delete loggedInUser.password;
+  delete loggedInUser.refreshToken;
+
+  const options = {
+    httpOnly: true,
+    secure: false,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+    path: "/",
+  };
+
   res
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
     .status(201)
     .json(new ApiResponse(201, data, "Org registered Successfully"));
 });
 
+// login
 const orgLogin = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -119,9 +138,9 @@ const orgLogin = asyncHandler(async (req, res, next) => {
   const options = {
     httpOnly: true,
     secure: false,
-     maxAge: 7 * 24 * 60 * 60 * 1000,
-     sameSite : "lax",
-     path  : "/"
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+    path: "/",
   };
 
   return res
@@ -130,7 +149,7 @@ const orgLogin = asyncHandler(async (req, res, next) => {
     .json(
       new ApiResponse(
         200,
-        {loggedInUser,accessToken},
+        { loggedInUser, accessToken },
         "Organization logged in successfully!",
       ),
     );
@@ -162,20 +181,18 @@ const editOrg = asyncHandler(async (req, res) => {
     country,
     businessName,
     businessSize,
-    phoneNumber
+    phoneNumber,
   };
-
- 
 
   // 3. Handle Profile Image Upload & Cleanup
   if (req.file) {
     // If an old image exists, delete it from the 'public' folder
     if (org.profileImage) {
       // Remove the leading slash if it exists to avoid root path issues
-      const relativePath = org.profileImage.startsWith('/') 
-        ? org.profileImage.slice(1) 
+      const relativePath = org.profileImage.startsWith("/")
+        ? org.profileImage.slice(1)
         : org.profileImage;
-        
+
       const oldPath = path.join(process.cwd(), relativePath);
 
       try {
@@ -190,8 +207,6 @@ const editOrg = asyncHandler(async (req, res) => {
     updateData.profileImage = `/public/${req.file.filename}`;
   }
 
-
-
   await org.update(updateData);
 
   const updatedOrg = org.toJSON();
@@ -201,18 +216,17 @@ const editOrg = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, updatedOrg, "Organization updated successfully")
+      new ApiResponse(200, updatedOrg, "Organization updated successfully"),
     );
 });
 
 const orgLogout = asyncHandler(async (req, res, next) => {
- 
   const options = {
     httpOnly: true,
     secure: false,
-     maxAge: 7 * 24 * 60 * 60 * 1000,
-     sameSite : "lax",
-     path  : "/"
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+    path: "/",
   };
 
   const org = await Organization.findByPk(req.organization?.id);
@@ -256,20 +270,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  const { accessToken } = await generateAccessToken(
-    org.id,
-  );
+  const { accessToken } = await generateAccessToken(org.id);
 
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        { accessToken},
-        "Access token refreshed",
-      ),
-    );
+    .json(new ApiResponse(200, { accessToken }, "Access token refreshed"));
 });
 
 const getCurrentOrgDetails = asyncHandler(async (req, res) => {
@@ -295,10 +301,11 @@ const getAllOrgs = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(200, data, "Org data"));
 });
 
-const me = asyncHandler(async (req,res) => {
-   
-  return res.json(new ApiResponse(200 , req.organization , "Organizaion Details"))
-})
+const me = asyncHandler(async (req, res) => {
+  return res.json(
+    new ApiResponse(200, req.organization, "Organizaion Details"),
+  );
+});
 
 module.exports = {
   registerOrg,
@@ -308,5 +315,5 @@ module.exports = {
   orgLogout,
   getCurrentOrgDetails,
   editOrg,
-  me
+  me,
 };
