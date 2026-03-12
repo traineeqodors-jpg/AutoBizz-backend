@@ -1,5 +1,5 @@
-const { createOpenAiBridge } = require('../services/openai.services');
-const { streamVoice } = require('../services/elevenlabs.services');
+const { createOpenAiBridge } = require('../services/AI Customer Services/openai.services.js');
+const { streamVoice } = require('../services/AI Customer Services/elevenlabs.services.js');
 const { attachCallLogger } = require('../middlewares/callLogger.middleware');
 
 const handleVoiceStream = (twilioWs) => {
