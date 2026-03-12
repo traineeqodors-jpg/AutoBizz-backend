@@ -26,6 +26,13 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "orgId",
         as: "details",
       });
+
+       Organization.hasOne(models.CallLog, {
+        foreignKey: "orgId",
+        as: "callLogs",
+      });
+
+
     }
 
     async validPassword(password) {

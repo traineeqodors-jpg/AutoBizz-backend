@@ -9,6 +9,9 @@ const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
 const tenantRouter = require("./src/routes/tenant.routes.js")
 const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
+// const { WebSocketServer } = require('ws');
+// const voiceRouter = require('./routes/voice.routes');
+// const { handleVoiceStream } = require('./controllers/voice.controller');
 
 
 const PORT = process.env.PORT;
@@ -39,6 +42,7 @@ app.use("/api/password" , passwordResetRouter)
 app.use("/api/tenant" , tenantRouter )
 app.use("/api/document" , documentRouter)
 app.use("/api/orgDetails" , orgDetailsRouter)
+// app.use("api/voice" , voiceRouter)
 
 
 app.use(errorHandler);
@@ -49,3 +53,11 @@ app.use(errorHandler);
 app.listen(PORT , "0.0.0.0" ,() => {
   console.log(`Server is running at :${PORT}`);
 });
+
+// const wss = new WebSocketServer({ server });
+
+// wss.on('connection', (ws) => {
+//     console.log("New Twilio connection established");
+//     // We pass the 'ws' parameter here!
+//     handleVoiceStream(ws); 
+// });
