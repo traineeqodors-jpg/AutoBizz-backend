@@ -13,8 +13,8 @@ const Organizaion = db.Organization
 
 const uploadDocuments = asyncHandler(async (req, res) => {
   // 1. Check if any files arrived
-  if (!req.files || req.files.length === 0) {
-    throw new ApiError(400, "No files uploaded. Please attach at least one file.");
+  if (!req.file) {
+    throw new ApiError(400, "No file uploaded. Please attach at least one file.");
   }
 
   const orgId = req.organization.id;
@@ -25,23 +25,23 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   //AWS S3 Logic for generating url
 
   // 2. Map through req.files (works for 1 or many)
-  const documentRecords = req.files.map((file) => ({
-    docType: file.mimetype,              // e.g. 'application/pdf' or 'image/png'
-    docUrl: `/public/${file.filename}`,  // Path saved in DB
+  const documentRecord = {
+    docType: req.file?.mimetype,              // e.g. 'application/pdf' or 'image/png'
+    docUrl: `/public/${req.file.filename}`,  // Path saved in DB
     orgId: parseInt(orgId),
-  }));
+  };
 
   // 3. Bulk Insert (Highly efficient for single or multiple records)
-  const savedDocs = await Document.bulkCreate(documentRecords);
+  const savedDoc = await Document.create(documentRecord);
 
-  if(!savedDocs){
+  if(!savedDoc){
    throw new ApiError(403 , "Error in Saving Document")
   }
 
   //Document removed from server logic
 
   res.json(
-    new ApiResponse(201 , savedDocs , `${savedDocs?.length} "saved successfully`)
+    new ApiResponse(201 , savedDoc , `saved successfully`)
    
   );
 });

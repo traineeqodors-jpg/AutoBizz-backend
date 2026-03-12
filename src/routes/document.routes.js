@@ -7,7 +7,7 @@ const router = express.Router();
 
 
 
-router.post("/upload-docs" , verifyJWT , uploads.array("files" , 10) , uploadDocuments);
+router.post("/upload-docs" , verifyJWT , uploads.single("file") , uploadDocuments);
 router.get("/my-documents" , verifyJWT , getMyDocuments)
 router.delete("/:id" , verifyJWT , deleteDocument)
 
