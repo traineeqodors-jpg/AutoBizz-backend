@@ -21,13 +21,11 @@ const router = express.Router();
 router.post("/register", validate(registerSchema), registerOrg);
 router.post("/login", orgLogin);
 router.post("/refresh-token", refreshAccessToken);
-router.put("/", uploadImage.single("file") ,verifyJWT, editOrg);
+router.put("/", uploadImage.single("file"), verifyJWT, editOrg);
 router.get("/", getAllOrgs);
 router.post("/logout", verifyJWT, orgLogout);
 router.get("/orgDetails", verifyJWT, getCurrentOrgDetails);
 
-router.get("/me", verifyJWT , me)
- 
-
+router.get("/me", verifyJWT, me);
 
 module.exports = router;

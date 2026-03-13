@@ -8,11 +8,15 @@ const fs = require("fs").promises;
 
 const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
 const crypto = require("crypto");
-const { PDFParse } = require("pdf-parse");
+const { Ollama } = require("ollama");
+const ollama = new Ollama();
+const officeParser = require("officeparser");
+const { upsertFileService } = require("../services/upsertVectorDoc");
 
 const Document = db.Document;
 const Organizaion = db.Organization;
 
+// Upload document and Upsert into pinecone
 const uploadDocuments = asyncHandler(async (req, res) => {
   // 1. Check if any files arrived
   if (!req.file) {
@@ -22,6 +26,8 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     );
   }
 
+  const index = req.app.locals.pineconeIndex;
+
   const orgId = req.organization.id;
   if (!orgId) {
     throw new ApiError(400, "Organization ID is required to link documents.");
@@ -29,23 +35,23 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 
   //AWS S3 Logic for generating url
 
-  // 2. Map through req.files (works for 1 or many)
+  // 2. Generating docRecord to store
   const documentRecord = {
     docType: req.file?.mimetype, // e.g. 'application/pdf' or 'image/png'
     docUrl: `/public/${req.file?.filename}`, // Path saved in DB
     orgId: parseInt(orgId),
   };
 
-  // 3. Bulk Insert (Highly efficient for single or multiple records)
+  // 3. Insert data in DB
   const savedDoc = await Document.create(documentRecord);
 
   if (!savedDoc) {
     throw new ApiError(403, "Error in Saving Document");
   }
 
-  //Document removed from server logic
+  upsertFileService({ file: req.file, businessId: orgId, index });
 
-  res.json(new ApiResponse(201, savedDoc, `saved successfully`));
+  res.json(new ApiResponse(201, savedDoc, `saved successfully.`));
 });
 
 const getMyDocuments = asyncHandler(async (req, res) => {
@@ -107,55 +113,117 @@ const deleteDocument = asyncHandler(async (req, res) => {
 });
 
 // upsertFile
+// const upsertFile = asyncHandler(async (req, res) => {
+//   const businessId = req.organization.id;
+
+//   if (!req.file) throw new ApiError(400, "No file uploaded.");
+
+//   // 1. Get the Unit8Array text
+//   const dataBuffer = await fs.readFile(req.file.path);
+//   const pdfDataUint = new Uint8Array(dataBuffer);
+
+//   // 2. create an instance of pdfParse
+//   const parser = new PDFParse(pdfDataUint);
+//   // OR
+//   // const parser = new PDFParse({ url: "https://bitcoin.org/bitcoin.pdf" });
+//   const pdfData = await parser.getText();
+
+//   console.log(pdfData);
+
+//   // Clean the text to remove \n and extra spaces
+//   const cleanText = pdfData.text
+//     .replace(/\n/g, " ")
+//     .replace(/\s+/g, " ")
+//     .trim();
+
+//   // 3. Define the Splitter
+//   const splitter = new RecursiveCharacterTextSplitter({
+//     chunkSize: 200,
+//     chunkOverlap: 10,
+//   });
+
+//   // 4. Split the text you just got from pdfData
+//   const chunks = await splitter.splitText(cleanText);
+
+//   const uuid = crypto.randomUUID();
+
+//   // 5. Prepare Records for Pinecone
+//   const records = chunks.map((chunk, i) => ({
+//     id: `${uuid}-${i}`,
+//     chunk_text: chunk,
+//     filename: String(req.file.originalname),
+//     original_text: chunk.toString(),
+//     total_pages: Number(pdfData.total || 0),
+//   }));
+
+//   // 6. Upsert to Pinecone
+//   const index = req.app.locals.pineconeIndex;
+
+//   await index.namespace(String(businessId)).upsertRecords({
+//     records: records,
+//   });
+
+//   res.json(
+//     new ApiResponse(
+//       201,
+//       {
+//         filename: req.file.originalname,
+//         businessId: String(businessId),
+//         chunksCreated: chunks.length,
+//       },
+//       `Successfully processed and embedded ${chunks.length} chunks.`,
+//     ),
+//   );
+// });
+
+// upsertFile
 const upsertFile = asyncHandler(async (req, res) => {
   const businessId = req.organization.id;
 
   if (!req.file) throw new ApiError(400, "No file uploaded.");
 
-  // 1. Get the Unit8Array text
-  const dataBuffer = await fs.readFile(req.file.path);
-  const pdfDataUint = new Uint8Array(dataBuffer);
+  // 1. Parsing Text from doc
+  const ast = await officeParser.parseOffice(req.file.path);
 
-  // 2. create an instance of pdfParse
-  const parser = new PDFParse(pdfDataUint);
-  // OR
-  // const parser = new PDFParse({ url: "https://bitcoin.org/bitcoin.pdf" });
-  const pdfData = await parser.getText();
+  const cleanText = ast.toText();
 
-  console.log(pdfData);
-
-  // Clean the text to remove \n and extra spaces
-  const cleanText = pdfData.text
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // 3. Define the Splitter
+  // 2. Define the Splitter
   const splitter = new RecursiveCharacterTextSplitter({
     chunkSize: 200,
-    chunkOverlap: 10,
+    chunkOverlap: 20,
   });
 
-  // 4. Split the text you just got from pdfData
+  // 3. Split the text you just got from pdfData
   const chunks = await splitter.splitText(cleanText);
-
   const uuid = crypto.randomUUID();
 
-  // 5. Prepare Records for Pinecone
-  const records = chunks.map((chunk, i) => ({
-    id: `${uuid}-${i}`,
-    chunk_text: chunk,
-    filename: String(req.file.originalname),
-    original_text: chunk.toString(),
-    total_pages: Number(pdfData.total || 0),
-  }));
+  // 4. Generate Embeddings with Ollama
+  const records = await Promise.all(
+    chunks.map(async (chunk, i) => {
+      const response = await ollama.embed({
+        model: "nomic-embed-text",
+        input: chunk,
+      });
 
-  // 6. Upsert to Pinecone
+      return {
+        id: `${uuid}-${i}`,
+        values: response.embeddings[0], // This is the vector [0.1, 0.2, ...]
+        metadata: {
+          chunk_text: chunk,
+          filename: String(req.file.originalname),
+          total_pages: Number(ast?.metadata?.pages || 0),
+          businessId: String(businessId),
+        },
+      };
+    }),
+  );
+
+  console.log(records.length);
+
+  // 5. Upsert to Pinecone
   const index = req.app.locals.pineconeIndex;
 
-  await index.namespace(String(businessId)).upsertRecords({
-    records: records,
-  });
+  await index.namespace(String(businessId)).upsert({ records });
 
   res.json(
     new ApiResponse(
@@ -170,9 +238,71 @@ const upsertFile = asyncHandler(async (req, res) => {
   );
 });
 
+// ragRetrieval
+const ragRetrieval = asyncHandler(async (req, res) => {
+  const { query } = req.body;
+  const businessId = req.organization.id;
+
+  if (!query) throw new ApiError(400, "Query text is required.");
+
+  // 1. Generate Embeddings with Ollama
+  const embeddedQuery = await ollama.embed({
+    model: "nomic-embed-text",
+    input: query,
+  });
+  const queryVector = embeddedQuery.embeddings;
+
+  // 2. Search in Pinecone
+  const index = req.app.locals.pineconeIndex;
+
+  const queryResponse = await index.namespace(String(businessId)).query({
+    vector: queryVector,
+    topK: 5,
+    // filter: {
+    //   file_uuid: { $eq: "2db2730e-9816-4678-9aa1-344905030d64" },
+    // },
+    includeMetadata: true,
+  });
+
+  // 3. Extract the text from the matches
+  const contexts = queryResponse.matches
+    .map((match) => match.metadata.chunk_text)
+    .join("\n\n---\n\n");
+
+  // 4. sending data to ollama Chat for Proper Response
+  const response = await ollama.chat({
+    model: "tinyllama:1.1b",
+    messages: [
+      {
+        role: "system",
+        content: `answer from the provided context smartly.`,
+      },
+      {
+        role: "user",
+        content: `Context: ${contexts} \n\n Question: ${query}`,
+      },
+    ],
+    options: {
+      temperature: 0.1,
+      num_predict: 100,
+    },
+  });
+
+  const finalResponse = response?.message?.content;
+
+  res.json(
+    new ApiResponse(
+      200,
+      finalResponse,
+      "Relevant context retrieved successfully.",
+    ),
+  );
+});
+
 module.exports = {
   uploadDocuments,
   getMyDocuments,
   deleteDocument,
   upsertFile,
+  ragRetrieval,
 };

@@ -91,14 +91,19 @@ const registerOrg = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: false,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
     sameSite: "lax",
     path: "/",
   };
 
   res
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, {
+      ...options,
+      maxAge: 60 * 1000 * 60 * 24,
+    })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
     .status(201)
     .json(new ApiResponse(201, data, "Org registered Successfully"));
 });
@@ -138,14 +143,19 @@ const orgLogin = asyncHandler(async (req, res, next) => {
   const options = {
     httpOnly: true,
     secure: false,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
     sameSite: "lax",
     path: "/",
   };
 
   return res
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, {
+      ...options,
+      maxAge: 60 * 1000 * 60 * 24,
+    })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
     .json(
       new ApiResponse(
         200,

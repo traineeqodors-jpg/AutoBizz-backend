@@ -10,7 +10,6 @@ const { comparePassword } = require("../utils/authHelper");
 const PasswordReset = db.PasswordReset;
 const Organization = db.Organization;
 
-
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
@@ -19,7 +18,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Organization Not Found");
   }
 
-   await PasswordReset.destroy({ where: { orgId: org.id } });
+  await PasswordReset.destroy({ where: { orgId: org.id } });
 
   const token = crypto.randomBytes(32).toString("hex");
 
@@ -41,7 +40,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     },
   });
 
-  const resetUrl = `http://192.168.0.37:5173/resetpassword/${token}`;
+  const resetUrl = `${process.env.FRONTEND_URL}/${token}`;
   await transporter.sendMail({
     to: email,
     subject: "Password Reset Request",
@@ -68,32 +67,29 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid Token or Expired");
   }
 
-  
-  
-
   // 3. Update the Organization's password
- const org = await Organization.findByPk(resetRecord.orgId);
+  const org = await Organization.findByPk(resetRecord.orgId);
 
- if(!org){
-  throw new ApiError(400 , "Organization Not Found")
- }
+  if (!org) {
+    throw new ApiError(400, "Organization Not Found");
+  }
 
- const isValidNewPassword = await comparePassword(newPassword , org.password)
- if(isValidNewPassword){
-  throw new ApiError(400 , "Please Enter New Password rather than old one")
- }
+  const isValidNewPassword = await comparePassword(newPassword, org.password);
+  if (isValidNewPassword) {
+    throw new ApiError(400, "Please Enter New Password rather than old one");
+  }
 
+  //Checking Password Validation
+  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    throw new ApiError(
+      400,
+      "Password must be at least 8 characters long and include one number and one special character",
+    );
+  }
 
- //Checking Password Validation
- const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
- if(!passwordRegex.test(newPassword)){
-   throw new ApiError(400 ,"Password must be at least 8 characters long and include one number and one special character");
- }
- 
-
-org.password = newPassword;
-await org.save({validate : false}); 
-  
+  org.password = newPassword;
+  await org.save({ validate: false });
 
   // 4. Delete the token record after successful reset
   await resetRecord.destroy();
@@ -101,5 +97,4 @@ await org.save({validate : false});
   res.status(200).json({ message: "Password reset successful." });
 });
 
-
-module.exports = { forgotPassword , resetPassword}
+module.exports = { forgotPassword, resetPassword };

@@ -16,13 +16,22 @@ async function initPinecone(businessName) {
     if (!exists) {
       console.log(`Creating Inference Index for business: ${indexName}`);
 
-      await pc.createIndexForModel({
-        name: indexName,
-        cloud: "aws",
-        region: "us-east-1",
-        embed: {
-          model: "llama-text-embed-v2",
-          fieldMap: { text: "chunk_text" },
+      // await pc.createIndexForModel({
+      //   name: indexName,
+      //   cloud: "aws",
+      //   region: "us-east-1",
+      //   embed: {
+      //     model: "llama-text-embed-v2",
+      //     fieldMap: { text: "chunk_text" },
+      //   },
+      //   waitUntilReady: true,
+      // });
+      await pc.createIndex({
+        name: "business-vault",
+        dimension: 768,
+        metric: "cosine",
+        spec: {
+          serverless: { cloud: "aws", region: "us-east-1" },
         },
         waitUntilReady: true,
       });
