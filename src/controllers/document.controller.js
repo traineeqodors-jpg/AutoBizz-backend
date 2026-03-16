@@ -3,8 +3,11 @@ const db = require("../../db/models");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
+const { Ollama} = require("ollama")
 const path = require("path")
 const fs = require("fs").promises;
+
+const ollama = new Ollama()
 
 
 
@@ -104,6 +107,7 @@ const deleteDocument = asyncHandler(async (req, res) => {
 
   res.json(new ApiResponse(200, null, "Document deleted successfully"));
 });
+
 
 
 

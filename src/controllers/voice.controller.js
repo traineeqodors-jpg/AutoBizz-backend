@@ -1,66 +1,38 @@
-const { createOpenAiBridge } = require('../services/AI Customer Services/openai.services.js');
-const { streamVoice } = require('../services/AI Customer Services/elevenlabs.services.js');
-const { attachCallLogger } = require('../middlewares/callLogger.middleware');
+const { processVoiceAI } = require('../services/ai.services');
+const { createGatherResponse, createPlayResponse } = require('../utils/twilML.utils');
 
-const handleVoiceStream = (twilioWs) => {
-    let streamSid = null;
-    let logger = null;
-    let organizationId = null; // Store the ID globally for this call
+const BASE_URL = process.env.BASE_URL;
 
-    const onUserInterruption = () => {
-        if (streamSid && twilioWs.readyState === 1) {
-            twilioWs.send(JSON.stringify({ event: 'clear', streamSid }));
-        }
-    };
-
-    // 1. Initialize OpenAI Bridge
-    const openAiWs = createOpenAiBridge(
-        // On AI Text Ready (TTS)
-        async (text) => {
-            if (logger) logger.logEvent('assistant', text);
-            if (streamSid) await streamVoice(text, twilioWs, streamSid);
-        },
-        // On Interruption
-        onUserInterruption,
-        // On User Text Ready (STT)
-        (userText) => {
-            if (logger) logger.logEvent('user', userText);
-        },
-        //  PASS THE ORGID TO RAG (If your RAG service needs it)
-        
-    );
-
-    twilioWs.on('message', (data) => {
-        const msg = JSON.parse(data);
-        
-        if (msg.event === 'start') {
-            streamSid = msg.start.streamSid;
-            
-            //  EXTRACT THE ORGID FROM CUSTOM PARAMETERS
-            // This matches the <Parameter name="orgId"> from your Routes
-            organizationId = msg.start.customParameters?.orgId || "default";
-
-            console.log(` Call Started for Org: ${organizationId} | Stream: ${streamSid}`);
-
-            // 3. Initialize Logger with the extracted ID
-            logger = attachCallLogger(twilioWs, organizationId, {
-                callSid: msg.start.callSid,
-                from: msg.start.customParameters?.from || "Unknown",
-                to: msg.start.customParameters?.to || "Unknown"
-            });
-        }
-        
-        if (msg.event === 'media' && openAiWs.readyState === 1) {
-            openAiWs.send(JSON.stringify({ 
-                type: 'input_audio_buffer.append', 
-                audio: msg.media.payload 
-            }));
-        }
-    });
-
-    twilioWs.on('close', () => {
-        openAiWs.close();
-    });
+const initiateCall = (req, res) => {
+  const orgId = req.query.orgId || 1;
+  const twiml = createGatherResponse("Hello! How can I help you today?", orgId);
+  res.type('text/xml').send(twiml);
 };
 
-module.exports = { handleVoiceStream };
+const handleAIProcessing = async (req, res) => {
+  const orgId = req.query.orgId || 1;
+  const userSpeech = req.body.SpeechResult;
+  
+  // Get Pinecone from app locals (initialized in app.js)
+  const pineconeIndex = req.app.locals.pineconeIndex;
+
+  if (!userSpeech) {
+    const retry = createGatherResponse("I didn't catch that. Could you repeat it?", orgId);
+    return res.type('text/xml').send(retry);
+  }
+
+  try {
+    // Pass userSpeech, pineconeIndex, and orgId (for namespace) to orchestrator
+    const { aiText, audioFile } = await processVoiceAI(userSpeech, pineconeIndex, orgId);
+    
+    const audioUrl = audioFile ? `${BASE_URL}/static/audio/${audioFile}` : null;
+    const twiml = createPlayResponse(audioUrl, aiText, orgId);
+
+    res.type('text/xml').send(twiml);
+  } catch (error) {
+    console.error("AI Processing Error:", error);
+    res.type('text/xml').send("<Response><Say>An error occurred.</Say></Response>");
+  }
+};
+
+module.exports = { initiateCall, handleAIProcessing };

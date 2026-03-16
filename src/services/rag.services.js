@@ -1,39 +1,32 @@
-const { Pinecone } = require('@pinecone-database/pinecone');
-const { OpenAI } = require('openai');
 
-const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const index = pc.index(process.env.PINECONE_INDEX_NAME);
+const {Ollama} = require("ollama")
+const ollama = new Ollama()
 
-/**
- * Converts a user question into a vector and searches Pinecone
- */
-const queryRAG = async (userQuery) => {
-    try {
-        // 1. Generate embedding for the user's question
-        const embedding = await openai.embeddings.create({
-            model: "text-embedding-3-small",
-            input: userQuery,
-        });
+const getRagResponse = async (query, pineconeIndex, orgId) => {
+  
+  const embeddedQuery = await ollama.embed({ model: "nomic-embed-text", input: query });
+  
+  
+  const index = pineconeIndex;
+  const queryResponse = await index.namespace(String(orgId)).query({
+    vector: embeddedQuery.embeddings,
+    topK: 5,
+    includeMetadata: true,
+  });
 
-        // 2. Query Pinecone for the top 3 most relevant matches
-        const queryResponse = await index.namespace("business-manual").query({
-            vector: embedding.data[0].embedding,
-            topK: 3,
-            includeMetadata: true,
-        });
+  const contexts = queryResponse.matches.map((m) => m.metadata.chunk_text).join("\n\n");
 
-        // 3. Extract the text content from the metadata
-        const context = queryResponse.matches
-            .map((match) => match.metadata.text)
-            .join("\n\n");
+  
+  const response = await ollama.chat({
+    model: "tinyllama:1.1b",
+    messages: [
+      { role: "system", content: "Use the context to answer smartly. If not found, say I don't know." },
+      { role: "user", content: `Context: ${contexts} \n\n Question: ${query}` },
+    ],
+  });
 
-        console.log("🔍 RAG Context Retrieved from Pinecone");
-        return context || "No relevant information found in the manual.";
-    } catch (error) {
-        console.error("❌ Pinecone Query Error:", error.message);
-        return "Error accessing business manual.";
-    }
+  return response?.message?.content; 
 };
 
-module.exports = { queryRAG };
+
+module.exports = {getRagResponse}

@@ -9,9 +9,12 @@ const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
 const tenantRouter = require("./src/routes/tenant.routes.js")
 const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
+const callLogRouter = require("./src/routes/callLog.routes.js")
 const { WebSocketServer } = require('ws');
 const voiceRouter = require('./src/routes/voice.routes.js');
 const { handleVoiceStream } = require('./src/controllers/voice.controller.js');
+const path = require("path");
+const { initPinecone } = require('./src/config/pinecone.js');
 
 
 const PORT = process.env.PORT;
@@ -31,7 +34,13 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cookieParser())
 app.use(express.urlencoded({extended : true}))
- app.use('/public', express.static('public'))
+app.use('/static', express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.mp3')) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+    }
+  }
+}));
  
 app.get("/", (req,res) => {
   res.send("hello World")
@@ -42,7 +51,8 @@ app.use("/api/password" , passwordResetRouter)
 app.use("/api/tenant" , tenantRouter )
 app.use("/api/document" , documentRouter)
 app.use("/api/orgDetails" , orgDetailsRouter)
-app.use("api/voice" , voiceRouter)
+app.use("/api/voice" , voiceRouter)
+app.use("/api/callLog" , callLogRouter)
 
 
 app.use(errorHandler);
@@ -50,14 +60,21 @@ app.use(errorHandler);
 
 
 
-const server = app.listen(PORT , "0.0.0.0" ,() => {
-  console.log(`Server is running at :${PORT}`);
-});
+const startServer = async () => {
+  try {
+    // 1. Initialize the single Pinecone index
+    const index = await initPinecone();
+ 
+    // 2. Save it to app.locals so all controllers can access it via req.app.locals
+    app.locals.pineconeIndex = index;
+ 
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server is running at :${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+  }
+};
+ 
+startServer();
 
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', (ws) => {
-    console.log("New Twilio connection established");
-    // We pass the 'ws' parameter here!
-    handleVoiceStream(ws); 
-});
