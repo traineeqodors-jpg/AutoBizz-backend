@@ -11,6 +11,7 @@ module.exports = {
       },
       callSid: {
         type: Sequelize.STRING,
+        unique : true
       },
       from: {
         type: Sequelize.STRING,

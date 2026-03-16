@@ -34,6 +34,8 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cookieParser())
 app.use(express.urlencoded({extended : true}))
+
+app.use("/public" ,express.static(path.join(__dirname, 'public')));
 app.use('/static', express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, path) => {
     if (path.endsWith('.mp3')) {

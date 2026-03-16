@@ -1,5 +1,7 @@
+const db = require('../../db/models');
 const { processVoiceAI } = require('../services/ai.services');
 const { createGatherResponse, createPlayResponse } = require('../utils/twilML.utils');
+db.CallLog = db.CallLog
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -11,9 +13,11 @@ const initiateCall = (req, res) => {
 
 const handleAIProcessing = async (req, res) => {
   const orgId = req.query.orgId || 1;
+  console.log("req body" ,req.body)
+    const { CallSid , CallStatus , CallDuration} = req.body;
   const userSpeech = req.body.SpeechResult;
   
-  // Get Pinecone from app locals (initialized in app.js)
+  
   const pineconeIndex = req.app.locals.pineconeIndex;
 
   if (!userSpeech) {
@@ -22,10 +26,25 @@ const handleAIProcessing = async (req, res) => {
   }
 
   try {
-    // Pass userSpeech, pineconeIndex, and orgId (for namespace) to orchestrator
+   
     const { aiText, audioFile } = await processVoiceAI(userSpeech, pineconeIndex, orgId);
+    console.log("AI Text" , aiText)
+
+    const existingLog = await db.CallLog.findOne({ where: { callSid: CallSid } });
+
+     await db.CallLog.update(
+      { 
+        transcript: db.sequelize.literal(`transcript || ${db.sequelize.escape('\nAI: ' + aiText)}`),
+        status: CallStatus || "in-progress",
+        duration: CallDuration ? parseInt(CallDuration) : existingLog.duration 
+
+      },
+      { where: { callSid: CallSid } }
+    );
+
+    console.log(`Database updated for CallSid: ${CallSid}`);
     
-    const audioUrl = audioFile ? `${BASE_URL}/static/audio/${audioFile}` : null;
+    const audioUrl = audioFile ? `${BASE_URL}static/audio/${audioFile}` : null;
     const twiml = createPlayResponse(audioUrl, aiText, orgId);
 
     res.type('text/xml').send(twiml);

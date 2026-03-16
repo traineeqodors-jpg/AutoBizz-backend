@@ -1,62 +1,65 @@
 "use strict";
 const db = require("../../db/models");
+const { upsertFileService } = require("../services/upsertVectorDoc");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
-const { Ollama} = require("ollama")
-const path = require("path")
+const path = require("path");
 const fs = require("fs").promises;
 
-const ollama = new Ollama()
-
-
-
 const Document = db.Document;
-const Organizaion = db.Organization
 
+// Upload document and Upsert into pinecone
 const uploadDocuments = asyncHandler(async (req, res) => {
   // 1. Check if any files arrived
   if (!req.file) {
-    throw new ApiError(400, "No file uploaded. Please attach at least one file.");
+    throw new ApiError(
+      400,
+      "No file uploaded. Please attach at least one file.",
+    );
   }
+
+  const index = req.app.locals.pineconeIndex;
 
   const orgId = req.organization.id;
   if (!orgId) {
     throw new ApiError(400, "Organization ID is required to link documents.");
   }
 
+  const uuid = crypto.randomUUID();
+ console.log(uuid)
   //AWS S3 Logic for generating url
 
-  // 2. Map through req.files (works for 1 or many)
+  // 2. Generating docRecord to store
   const documentRecord = {
-    docType: req.file?.mimetype,              // e.g. 'application/pdf' or 'image/png'
-    docUrl: `/public/${req.file.filename}`,  // Path saved in DB
+    docType: req.file?.mimetype, // e.g. 'application/pdf' or 'image/png'
+    docUrl: `/public/${req.file?.filename}`, // Path saved in DB
     orgId: parseInt(orgId),
+    pineconeId: uuid,
   };
 
-  // 3. Bulk Insert (Highly efficient for single or multiple records)
+  // 3. Insert data in DB
   const savedDoc = await Document.create(documentRecord);
 
-  if(!savedDoc){
-   throw new ApiError(403 , "Error in Saving Document")
+  if (!savedDoc) {
+    throw new ApiError(403, "Error in Saving Document");
   }
 
-  //Document removed from server logic
+   console.log(uuid)
 
-  res.json(
-    new ApiResponse(201 , savedDoc , `saved successfully`)
-   
-  );
+  upsertFileService({ file: req.file, businessId: orgId, index, uuid });
+
+  res.json(new ApiResponse(201, savedDoc, `saved successfully.`));
 });
-
-
-
 
 const getMyDocuments = asyncHandler(async (req, res) => {
   const organizationId = req.organization?.id;
 
   if (!organizationId) {
-    throw new ApiError(401, "Unauthorized: Organization ID missing from request");
+    throw new ApiError(
+      401,
+      "Unauthorized: Organization ID missing from request",
+    );
   }
 
   // 2. Fetch the documents linked to this specific orgId
@@ -66,51 +69,54 @@ const getMyDocuments = asyncHandler(async (req, res) => {
     attributes: ["id", "docType", "docUrl", "createdAt"], // Security: don't return orgId if not needed
   });
 
-   if (!documents) {
+  if (!documents) {
     throw new ApiError(400, "Cant Get Documents");
   }
 
   // 3. Return the list
-  res.json(new ApiResponse(200 , documents , "All Documents"))
- 
+  res.json(new ApiResponse(200, documents, "All Documents"));
 });
-
 
 const deleteDocument = asyncHandler(async (req, res) => {
   const organizationId = req.organization?.id;
-  const { id } = req.params; 
-
+  const { id } = req.params;
+ 
+  const index = req.app.locals.pineconeIndex;
+ 
   if (!organizationId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
-
  
   const document = await Document.findOne({
     where: { id, orgId: organizationId },
   });
-
+ 
+  console.log(document.pineconeId);
+ 
   if (!document) {
     throw new ApiError(404, "Document not found or access denied");
   }
-
  
   const fileName = path.basename(document.docUrl);
-  const filePath = path.join(__dirname, "../../public", fileName); 
-
+  const filePath = path.join(__dirname, "../../public", fileName);
+ 
   try {
     await fs.unlink(filePath);
+    await index.namespace(String(organizationId)).deleteMany({
+      filter: {
+        file_uuid: { $eq: document.pineconeId },
+      },
+    });
   } catch (err) {
-    console.error("File deletion failed, might not exist on disk:", err.message);
+    console.error(
+      "File deletion failed, might not exist on disk:",
+      err.message,
+    );
   }
-
+ 
   await document.destroy();
-
+ 
   res.json(new ApiResponse(200, null, "Document deleted successfully"));
 });
 
-
-
-
-
-
-module.exports = { uploadDocuments , getMyDocuments , deleteDocument}
+module.exports = { uploadDocuments, getMyDocuments, deleteDocument };

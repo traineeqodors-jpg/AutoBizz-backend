@@ -19,6 +19,11 @@ module.exports = (sequelize, DataTypes) => {
       docType: DataTypes.STRING,
       docUrl: DataTypes.STRING,
       orgId: DataTypes.INTEGER,
+      pineconeId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: "Stores the file_uuid used in Pinecone",
+      },
     },
     {
       sequelize,

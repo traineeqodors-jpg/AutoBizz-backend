@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
         as: "details",
       });
 
-       Organization.hasOne(models.CallLog, {
+       Organization.hasMany(models.CallLog, {
         foreignKey: "orgId",
         as: "callLogs",
       });

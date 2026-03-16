@@ -13,6 +13,7 @@
   "description": "",
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.38.1",
+    "@langchain/textsplitters": "^1.0.1",
     "@pinecone-database/pinecone": "^7.1.0",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
@@ -26,6 +27,7 @@
     "multer": "^2.1.1",
     "nodemailer": "^8.0.1",
     "nodemon": "^3.1.14",
+    "officeparser": "^6.0.4",
     "ollama": "^0.6.3",
     "openai": "^6.27.0",
     "pdf-parse": "^2.4.5",

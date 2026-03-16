@@ -1,12 +1,11 @@
 "use strict";
-const { where } = require("sequelize");
 const db = require("../../db/models");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 
 const CallLog = db.CallLog;
-const Organizaion = db.Organization;
+
 
 const getAllCallLogs = asyncHandler(async (req, res) => {
 

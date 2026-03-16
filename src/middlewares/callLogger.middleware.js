@@ -1,28 +1,42 @@
-const db = require("../../db/models"); // Ensure this path points to your Sequelize index
-const CallLog = db.CallLog 
+const db = require("../../db/models");
 
 const logCallMiddleware = async (req, res, next) => {
   const { orgId } = req.query; 
   const { CallSid, From, To, SpeechResult, CallStatus } = req.body;
 
-  // 1. Log to terminal for debugging
   if (CallSid) {
-    console.log(`📞 Call Step Detected: ${CallSid} | Status: ${CallStatus || 'active'}`);
-    if (SpeechResult) console.log(`📝 Transcript Received: "${SpeechResult}"`);
+    
+    const originalSend = res.send;
 
+    res.send = function (body) {
+      
+      if (res.getHeader('Content-Type')?.includes('xml')) {
+        console.log(` Outgoing TwiML: \n${body}`);
+
+       
+      }
+      return originalSend.call(this, body);
+    };
+
+    // --- 2. LOG THE INCOMING DATA (As before) ---
     try {
-      // 2. Use db.CallLog (The correct reference)
+      const existingCall = await db.CallLog.findOne({ where: { callSid: CallSid } });
+      let fullTranscript = existingCall ? existingCall.transcript : "";
+      
+      if (SpeechResult) {
+        fullTranscript += (fullTranscript ? "\n" : "") + `User: ${SpeechResult}`;
+      }
+
       await db.CallLog.upsert({
         callSid: CallSid,
-        from: From,
-        to: To,
+        from: From || (existingCall ? existingCall.from : null),
+        to: To || (existingCall ? existingCall.to : null),
         status: CallStatus || 'in-progress',
-        transcript: SpeechResult || '', // This will update the transcript as the call flows
-        orgId: orgId ? parseInt(orgId) : 1 
+        transcript: fullTranscript,
+        orgId: orgId ? parseInt(orgId) : (existingCall ? existingCall.orgId : 1)
       });
-      console.log("✅ Database Updated Successfully");
     } catch (err) {
-      console.error("❌ DB Log Error:", err.message);
+      console.error(" DB Log Error:", err.message);
     }
   }
 
