@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const {initiateCall,handleAIProcessing} = require('../controllers/voice.controller');
-const logCallMiddleware = require('../middlewares/callLogger.middleware');
+
 
 
 // Initial call entry
-router.post('/', logCallMiddleware, initiateCall);
+router.post('/', initiateCall);
 
 // AI processing loop
-router.post('/handle-ai', logCallMiddleware, handleAIProcessing);
+router.post('/handle-ai', handleAIProcessing);
 
 
 

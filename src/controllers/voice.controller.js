@@ -1,55 +1,54 @@
 const db = require('../../db/models');
 const { processVoiceAI } = require('../services/ai.services');
+const safeLog = require('../services/leadAndCallLog.services');
 const { createGatherResponse, createPlayResponse } = require('../utils/twilML.utils');
-db.CallLog = db.CallLog
 
+const CallLog = db.CallLog;
+const Lead = db.Lead;
 const BASE_URL = process.env.BASE_URL;
 
-const initiateCall = (req, res) => {
+
+const initiateCall = async (req, res) => {
   const orgId = req.query.orgId || 1;
-  const twiml = createGatherResponse("Hello! How can I help you today?", orgId);
-  res.type('text/xml').send(twiml);
+  const welcomeText = "Hello! How can I help you today?";
+  
+  await safeLog(req.body, welcomeText, 'AI', orgId);
+
+  res.type('text/xml').send(createGatherResponse(welcomeText, orgId));
 };
 
 const handleAIProcessing = async (req, res) => {
   const orgId = req.query.orgId || 1;
-  console.log("req body" ,req.body)
-    const { CallSid , CallStatus} = req.body;
-  const userSpeech = req.body.SpeechResult;
-  
-  
+  const { CallSid, CallStatus, CallDuration, SpeechResult, From } = req.body;
   const pineconeIndex = req.app.locals.pineconeIndex;
 
-  if (!userSpeech) {
-    const retry = createGatherResponse("I didn't catch that. Could you repeat it?", orgId);
-    return res.type('text/xml').send(retry);
+  const finalData = { status: CallStatus || "in-progress" };
+  if (CallStatus === 'completed' && CallDuration) {
+    finalData.duration = parseInt(CallDuration);
+  }
+
+  if (!SpeechResult) {
+    const retryText = "I didn't catch that. Could you repeat it?";
+    await safeLog(req.body, retryText, 'AI', orgId, finalData);
+    return res.type('text/xml').send(createGatherResponse(retryText, orgId));
   }
 
   try {
-   
-    const { aiText, audioFile } = await processVoiceAI(userSpeech, pineconeIndex, orgId);
-    console.log("AI Text" , aiText)
+    // 1. Log User Speech in CallLog AND Lead Table
+    await safeLog(req.body, SpeechResult, 'User', orgId);
 
-   
+    // 2. AI Processing
+    const { aiText, audioFile } = await processVoiceAI(SpeechResult, pineconeIndex, orgId);
 
-     await db.CallLog.update(
-      { 
-        transcript: db.sequelize.literal(`transcript || ${db.sequelize.escape('\nAI: ' + aiText)}`),
-        status: CallStatus || "in-progress", 
+    // 3. Log AI Response in CallLog AND Lead Table
+    await safeLog(req.body, aiText, 'AI', orgId, finalData);
 
-      },
-      { where: { callSid: CallSid } }
-    );
-
-  
-    
     const audioUrl = audioFile ? `${BASE_URL}static/audio/${audioFile}` : null;
-    const twiml = createPlayResponse(audioUrl, aiText, orgId);
+    res.type('text/xml').send(createPlayResponse(audioUrl, aiText, orgId));
 
-    res.type('text/xml').send(twiml);
   } catch (error) {
     console.error("AI Processing Error:", error);
-    res.type('text/xml').send("<Response><Say>An error occurred.</Say></Response>");
+    res.type('text/xml').send("<Response><Say>Error occurred.</Say><Hangup/></Response>");
   }
 };
 

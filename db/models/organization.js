@@ -36,6 +36,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "orgId",
         as: "sop",
       });
+      Organization.hasMany(models.Lead, {
+        foreignKey: "orgId",
+        as: "lead",
+      });
+
 
 
     }

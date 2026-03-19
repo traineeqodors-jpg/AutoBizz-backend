@@ -98,13 +98,14 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 
   const orgId = req.organization.id;
 
-  console.log(orgId);
   
   const { scriptContent } = req.body;
 
+
+
   const newSop = {
     orgId,
-    sopScript: scriptContent
+    videoScript: scriptContent
   }
 
   const data = await sop.create(newSop);

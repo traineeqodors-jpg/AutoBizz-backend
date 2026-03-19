@@ -34,7 +34,7 @@ GUIDELINES:
 5. Strictly Keep it under 2 lines only.`;
 
   const response = await ollama.chat({
-    model: "llama3",
+    model: "tinyllama:1.1b",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: `Context: ${contexts} \n\n Question: ${query}` },

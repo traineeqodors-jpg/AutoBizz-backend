@@ -10,6 +10,7 @@ const tenantRouter = require("./src/routes/tenant.routes.js")
 const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
 const callLogRouter = require("./src/routes/callLog.routes.js")
+const leadRouter = require("./src/routes/lead.routes.js")
 
 const voiceRouter = require('./src/routes/voice.routes.js');
 const sopVideoRouter = require("./src/routes/sop.routes.js");
@@ -57,6 +58,7 @@ app.use("/api/document" , documentRouter)
 app.use("/api/orgDetails" , orgDetailsRouter)
 app.use("/api/voice" , voiceRouter)
 app.use("/api/callLog" , callLogRouter)
+app.use("/api/lead" , leadRouter)
 app.use("/api/prepareScript", scriptGenRouter);
 app.use("/api/generateSOP", sopVideoRouter);
 
