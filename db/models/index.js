@@ -16,6 +16,7 @@ db.PasswordReset = require("./passwordreset")(sequelize, Sequelize.DataTypes);
 db.Document = require("./document")(sequelize, Sequelize.DataTypes);
 db.OrganizationDetail = require("./organizationdetail")(sequelize , Sequelize.DataTypes)
 db.CallLog = require("./calllog")(sequelize ,Sequelize.DataTypes )
+db.Sop = require("./sop")(sequelize ,Sequelize.DataTypes )
 
 
 Object.keys(db).forEach(modelName => {

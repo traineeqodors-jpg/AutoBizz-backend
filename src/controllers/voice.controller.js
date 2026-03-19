@@ -14,7 +14,7 @@ const initiateCall = (req, res) => {
 const handleAIProcessing = async (req, res) => {
   const orgId = req.query.orgId || 1;
   console.log("req body" ,req.body)
-    const { CallSid , CallStatus , CallDuration} = req.body;
+    const { CallSid , CallStatus} = req.body;
   const userSpeech = req.body.SpeechResult;
   
   
@@ -30,19 +30,18 @@ const handleAIProcessing = async (req, res) => {
     const { aiText, audioFile } = await processVoiceAI(userSpeech, pineconeIndex, orgId);
     console.log("AI Text" , aiText)
 
-    const existingLog = await db.CallLog.findOne({ where: { callSid: CallSid } });
+   
 
      await db.CallLog.update(
       { 
         transcript: db.sequelize.literal(`transcript || ${db.sequelize.escape('\nAI: ' + aiText)}`),
-        status: CallStatus || "in-progress",
-        duration: CallDuration ? parseInt(CallDuration) : existingLog.duration 
+        status: CallStatus || "in-progress", 
 
       },
       { where: { callSid: CallSid } }
     );
 
-    console.log(`Database updated for CallSid: ${CallSid}`);
+  
     
     const audioUrl = audioFile ? `${BASE_URL}static/audio/${audioFile}` : null;
     const twiml = createPlayResponse(audioUrl, aiText, orgId);

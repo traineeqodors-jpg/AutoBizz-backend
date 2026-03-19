@@ -32,6 +32,11 @@ module.exports = (sequelize, DataTypes) => {
         as: "callLogs",
       });
 
+       Organization.hasMany(models.Sop, {
+        foreignKey: "orgId",
+        as: "sop",
+      });
+
 
     }
 

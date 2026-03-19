@@ -66,7 +66,7 @@ const getMyDocuments = asyncHandler(async (req, res) => {
   const documents = await Document.findAll({
     where: { orgId: organizationId },
     order: [["createdAt", "DESC"]], // Show newest first
-    attributes: ["id", "docType", "docUrl", "createdAt"], // Security: don't return orgId if not needed
+    attributes: ["id", "docType", "pineconeId" ,"docUrl", "createdAt"], // Security: don't return orgId if not needed
   });
 
   if (!documents) {

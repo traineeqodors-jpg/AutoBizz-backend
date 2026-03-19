@@ -40,7 +40,7 @@ const generateAudio = async (text) => {
         return new Promise((resolve, reject) => {
             audioStream.pipe(fileStream);
             fileStream.on('finish', () => {
-                console.log(`✅ Human-like Audio saved: ${fileName}`);
+                console.log(`Human-like Audio saved: ${fileName}`);
                 resolve(fileName);
             });
             fileStream.on('error', (err) => {

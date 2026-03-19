@@ -10,9 +10,11 @@ const tenantRouter = require("./src/routes/tenant.routes.js")
 const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
 const callLogRouter = require("./src/routes/callLog.routes.js")
-const { WebSocketServer } = require('ws');
+
 const voiceRouter = require('./src/routes/voice.routes.js');
-const { handleVoiceStream } = require('./src/controllers/voice.controller.js');
+const sopVideoRouter = require("./src/routes/sop.routes.js");
+const scriptGenRouter = require("./src/routes/script.routes.js")
+const webhooksHeygen = require("./src/webhooks/heygenstatus.webhook.js")
 const path = require("path");
 const { initPinecone } = require('./src/config/pinecone.js');
 
@@ -55,6 +57,10 @@ app.use("/api/document" , documentRouter)
 app.use("/api/orgDetails" , orgDetailsRouter)
 app.use("/api/voice" , voiceRouter)
 app.use("/api/callLog" , callLogRouter)
+app.use("/api/prepareScript", scriptGenRouter);
+app.use("/api/generateSOP", sopVideoRouter);
+
+app.use("/webhooks/heygen", webhooksHeygen);
 
 
 app.use(errorHandler);
