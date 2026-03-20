@@ -6,9 +6,7 @@ const { parse } = require('yaml');
 const fs = require('fs');
 const db = require("../../db/models");
 const { default: axios } = require("axios");
-const { log } = require("console");
-const sop = db.Sop;
-
+const Sop = db.Sop;
 
 
 
@@ -90,25 +88,21 @@ const prepareScript = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, finalScript, "Final Script!"));
 });
 
-
-
-
-
 const generateSOPVideo = asyncHandler(async (req, res) => {
 
   const orgId = req.organization.id;
 
+  console.log(orgId);
   
   const { scriptContent } = req.body;
-
-
+  
 
   const newSop = {
     orgId,
     videoScript: scriptContent
   }
 
-  const data = await sop.create(newSop);
+  const data = await Sop.create(newSop);
 
   const response = await axios.post(
     "https://api.heygen.com/v2/video/generate", // Updated Endpoint
@@ -129,7 +123,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
         },
       ],
       dimension: { width: 1280, height: 720 },
-      callback_url: "https://dknjfbwx-5000.inc1.devtunnels.ms/webhooks/heygen", // Your public HTTPS endpoint
+      callback_url: `${process.env.BASE_URL}webhooks/heygen`, // Your public HTTPS endpoint
       callback_id: `${orgId}_sop_video`, // (Optional) A custom string to identify this job in your DB
     },
     {
@@ -153,5 +147,23 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
   );
 });
 
+const getAllVideos = asyncHandler(async (req, res) => {
 
-module.exports = { generateSOPVideo, prepareScript };
+  
+  const businessId = req?.organization?.id;
+
+  if (!businessId) {
+    throw new ApiError(401, "Unauthorized: Organization ID missing");
+  }
+
+  const videos = await Sop.findAll({
+    where: {
+      orgId: businessId,
+    },
+  });
+
+  return res.json(new ApiResponse(200, videos, "All Sop Videos"));
+});
+
+
+module.exports = { generateSOPVideo, prepareScript, getAllVideos };

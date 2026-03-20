@@ -11,6 +11,9 @@ const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
 const callLogRouter = require("./src/routes/callLog.routes.js")
 const leadRouter = require("./src/routes/lead.routes.js")
+const http = require("http");
+const { Server } = require("socket.io");
+
 
 const voiceRouter = require('./src/routes/voice.routes.js');
 const sopVideoRouter = require("./src/routes/sop.routes.js");
@@ -22,15 +25,30 @@ const { initPinecone } = require('./src/config/pinecone.js');
 
 const PORT = process.env.PORT;
 
+const server = http.createServer(app);
 
-app.use(cors({
-  origin: [
-    "http://localhost:5173",          // Local dev
-    "http://192.168.0.40:5173",       // Your local IP for other PCs
-    "http://192.168.0.37:5173" // Live site
-  ],
-  credentials: true
-}));
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173", // Local dev
+      "http://192.168.0.37:5173", // Your local IP for other PCs
+    ],
+    credentials: true,
+  }, // Your React URL
+});
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://192.168.0.37:5173"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+// Attach io to app so controllers can access it
+app.set("io", io);
+
 
 app.set('trust proxy', 1);
 
@@ -60,14 +78,21 @@ app.use("/api/voice" , voiceRouter)
 app.use("/api/callLog" , callLogRouter)
 app.use("/api/lead" , leadRouter)
 app.use("/api/prepareScript", scriptGenRouter);
-app.use("/api/generateSOP", sopVideoRouter);
+app.use("/api/sop", sopVideoRouter);
 
 app.use("/webhooks/heygen", webhooksHeygen);
 
 
 app.use(errorHandler);
 
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
 
+  // Optional: Join a room based on userId to send private updates
+  socket.on("join-user-room", (userId) => {
+    socket.join(`user_${userId}`);
+  });
+});
 
 
 const startServer = async () => {
@@ -78,7 +103,7 @@ const startServer = async () => {
     // 2. Save it to app.locals so all controllers can access it via req.app.locals
     app.locals.pineconeIndex = index;
  
-    app.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running at :${PORT}`);
     });
   } catch (error) {
@@ -87,4 +112,3 @@ const startServer = async () => {
 };
  
 startServer();
-
