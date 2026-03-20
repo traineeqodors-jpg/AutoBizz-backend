@@ -1,22 +1,15 @@
 const db = require("../../db/models");
-const Lead = db.Lead
 const CallLog = db.CallLog
+const Lead = db.Lead
 
-
-/**
- * NEW: Lead Sync Helper (Stage 6)
- * Creates or Updates a Lead based on the Phone Number
- */
 const syncLead = async (from, text, role, orgId) => {
-  if (!from) return; // Skip if no phone number (e.g. testing)
-
-  const formattedMsg = `\n[Call ${role}]: ${text}`;
+  if (!from) return;
+  const formattedMsg = `\n[${role}]: ${text}`;
   
-  // findOrCreate lead by phone number
   const [lead, created] = await Lead.findOrCreate({
     where: { phone: from },
     defaults: {
-      name: "Unknown Caller", // Placeholder for Stage 6 enrichment later
+      name: "Unknown",
       message: formattedMsg.trim(),
       orgId: parseInt(orgId),
       confidence_score: 10
@@ -26,19 +19,19 @@ const syncLead = async (from, text, role, orgId) => {
   if (!created) {
     await lead.update({
       message: db.sequelize.literal(`COALESCE(message, '') || ${db.sequelize.escape(formattedMsg)}`),
-      confidence_score: (lead.confidence_score || 0) + 2 // Small boost for returning calls
+      // We will run the AI Scorer separately at the end of the call to avoid lag
+      confidence_score: (lead.confidence_score || 0) + 1 
     });
   }
+  return lead;
 };
 
-/**
- * Updated SafeLog to handle CallLogs
- */
 const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
   const { CallSid, From, To } = reqBody;
   const formattedText = `\n${role}: ${text}`;
 
-  await CallLog.findOrCreate({
+  // Use upsert or find then update logic to avoid double appending
+  const [log, created] = await CallLog.findOrCreate({
     where: { callSid: CallSid },
     defaults: {
       from: From, to: To, orgId: parseInt(orgId),
@@ -47,17 +40,19 @@ const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
     }
   });
 
-  await CallLog.update(
-    {
-      ...extraData,
-      transcript: db.sequelize.literal(`COALESCE(transcript, '') || ${db.sequelize.escape(formattedText)}`)
-    },
-    { where: { callSid: CallSid } }
-  );
+  // If it wasn't just created, append the text safely
+  if (!created) {
+    await CallLog.update(
+      {
+        ...extraData,
+        transcript: db.sequelize.literal(`COALESCE(transcript, '') || ${db.sequelize.escape(formattedText)}`)
+      },
+      { where: { callSid: CallSid } }
+    );
+  }
 
-  // TRIGGER LEAD SYNC: Connect Call to Lead Table
-  await syncLead(From, text, role, orgId);
+  return await syncLead(From, text, role, orgId);
 };
 
 
-module.exports = safeLog;
+module.exports = safeLog

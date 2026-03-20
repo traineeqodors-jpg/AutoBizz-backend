@@ -1,5 +1,6 @@
 "use strict";
 const db = require("../../db/models");
+const { getLeadAnalysis } = require("../services/lead.services");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -54,4 +55,32 @@ const addLead = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, lead, statusMessage));
 });
 
-module.exports = { addLead };
+const scoreLead = asyncHandler(async( req ,res) => {
+  
+  const leads = await Lead.findAll({limit : 5});
+
+  if(!leads || leads.length === 0){
+    throw new ApiError(404 , "No Leads Found")
+  }
+  const results = await getLeadAnalysis(leads)
+
+  if(!results){
+    throw new ApiError(404 , "Error in getting analysis from leads")
+  }
+ 
+  res.json(new ApiResponse(200 , results , "Lead Score"))
+
+})
+
+const getAllLeads = asyncHandler(async(req,res) => {
+
+  const leads = await Lead.findAll();
+
+  if(!leads || leads.length === 0){
+    throw new ApiError(404 , "No Leads Found")
+  }
+
+  res.json(new ApiResponse(200 , leads , "All Leads Data"))
+})
+
+module.exports = { addLead , scoreLead , getAllLeads};

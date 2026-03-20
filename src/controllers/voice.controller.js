@@ -43,7 +43,7 @@ const handleAIProcessing = async (req, res) => {
     // 3. Log AI Response in CallLog AND Lead Table
     await safeLog(req.body, aiText, 'AI', orgId, finalData);
 
-    const audioUrl = audioFile ? `${BASE_URL}static/audio/${audioFile}` : null;
+    const audioUrl = audioFile ? `${BASE_URL}/static/audio/${audioFile}` : null;
     res.type('text/xml').send(createPlayResponse(audioUrl, aiText, orgId));
 
   } catch (error) {
