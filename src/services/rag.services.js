@@ -25,20 +25,27 @@ const getRagResponse = async (query, pineconeIndex, orgId) => {
 
    
   // 1. ADD HUMAN EMOTION INSTRUCTIONS
-  const systemPrompt = `You are a helpful human assistant. 
-GUIDELINES:
-1. Speak NATURALLY. Do NOT start with "Response:" or "Answer:".
-2. Only output the direct answer.
-3. Use "..." ONLY for a natural pause (e.g. "Let me see... yes, we have that").
-4. If you don't know, say "I'm sorry, I don't have that information."
-5. Strictly Keep it under 2 lines only.`;
+   const systemPrompt = `You are a natural human assistant. 
+STRICT RULES:
+1. Use ONLY the provided Context to answer. 
+2. If the answer is not in the Context, ONLY say: "I'm sorry, I don't have that information."
+3. Your response MUST be 2 lines or fewer. No exceptions.
+4. Speak directly. Do NOT use prefixes like "Based on the context" or "Answer:".
+5. Keep it conversational but extremely brief.`;
 
-  const response = await ollama.chat({
+
+ const response = await ollama.chat({
     model: "tinyllama:1.1b",
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `Context: ${contexts} \n\n Question: ${query}` },
+    
+      { role: "user", content: `Context: ${contexts}\n\nQuestion: ${query}\n\nConstraint: Answer in 15 words or less.` },
     ],
+    
+    options: {
+      num_predict: 40, 
+      temperature: 0.3, 
+    }
   });
 
   let cleanContent = response?.message?.content || "";

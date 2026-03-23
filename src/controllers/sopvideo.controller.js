@@ -6,8 +6,43 @@ const { parse } = require('yaml');
 const fs = require('fs');
 const db = require("../../db/models");
 const { default: axios } = require("axios");
+const path = require("path");
 const Sop = db.Sop;
 
+const testDownload = asyncHandler(async (req, res) => {
+  const { videoUrl } = req.body;
+  
+
+  const dir = path.join(process.cwd(), "public", "videos");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+  const localPath = path.join(dir, `TEST.mp4`);
+
+  // 3. Download using a Stream and handle it as a Promise
+  const response = await axios({
+    url: videoUrl,
+    method: "GET",
+    responseType: "stream",
+  });
+
+  const writer = fs.createWriteStream(localPath);
+  response.data.pipe(writer);
+
+  writer.on("finish", () => {
+    console.log(`Video test saved to ${localPath}`);
+    // If this is a standard API call, respond here.
+    // If it's a webhook, the response might have already been sent.
+    if (!res.headersSent)
+      res.send({ message: "Success", path: localPath });
+  });
+
+  writer.on("error", (err) => {
+    console.error("Stream error:", err);
+    if (!res.headersSent) res.status(500).send("File system error");
+        
+  })
+
+  res.status(200).json(new ApiResponse(200, writer, "VIDEO DOWNLOADED"))
+});
 
 
 const prepareScript = asyncHandler(async (req, res) => {
@@ -49,25 +84,20 @@ const prepareScript = asyncHandler(async (req, res) => {
   
   
 
-  const contextText = queryResponse.matches
+  const contextChunks = queryResponse.matches
     .filter((match) => match.score >= 0.5)
-    .map((match) => match.metadata.chunk_text)
-    .join("\n\n---\n\n");
+    .map((match) => match.metadata.chunk_text);
   
-  if (!contextText || contextText.length < 5) {
+  console.log(contextChunks);
+  
+
+  if (!contextChunks || contextChunks.length < 3) {
     return res
       .status(404)
-      .json(
-        new ApiResponse(
-          404,
-          null,
-          "No relevant SOP documentation found for this topic.",
-        ),
-      );
+      .json(new ApiResponse(404, null, "No relevant SOP documentation found."));
   }
 
-
-  
+  const contextText = contextChunks.join("\n\n---\n\n");
   
 
   const chatResponse = await ollama.chat({
@@ -123,7 +153,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
         },
       ],
       dimension: { width: 1280, height: 720 },
-      callback_url: `${process.env.BASE_URL}/webhooks/heygen`, // Your public HTTPS endpoint
+      callback_url: "https://dknjfbwx-5000.inc1.devtunnels.ms/webhooks/heygen", // Your public HTTPS endpoint
       callback_id: `${orgId}_sop_video`, // (Optional) A custom string to identify this job in your DB
     },
     {
@@ -165,5 +195,44 @@ const getAllVideos = asyncHandler(async (req, res) => {
   return res.json(new ApiResponse(200, videos, "All Sop Videos"));
 });
 
+const deleteVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const businessId = req?.organization?.id;
 
-module.exports = { generateSOPVideo, prepareScript, getAllVideos };
+  // 1. Check for authentication/organization context
+  if (!businessId) {
+    throw new ApiError(401, "Unauthorized: Organization ID missing");
+  }
+
+  // 2. Find the video and ensure it belongs to the current organization
+  const video = await Sop.findOne({
+    where: {
+      id: videoId,
+      orgId: businessId,
+    },
+  });
+
+  // 3. Handle 404 if the video doesn't exist or isn't owned by the org
+  if (!video) {
+    throw new ApiError(
+      404,
+      "Video not found or you do not have permission to delete it",
+    );
+  }
+
+  // 4. Perform the deletion
+  await video.destroy();
+
+  // 5. Return success response
+  return res.json(new ApiResponse(200, {}, "Sop Video deleted successfully"));
+});
+
+
+
+module.exports = {
+  generateSOPVideo,
+  prepareScript,
+  getAllVideos,
+  deleteVideo,
+  testDownload,
+};

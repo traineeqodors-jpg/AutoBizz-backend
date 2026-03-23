@@ -57,7 +57,7 @@ const addLead = asyncHandler(async (req, res) => {
 
 const scoreLead = asyncHandler(async( req ,res) => {
   
-  const leads = await Lead.findAll({limit : 5});
+  const leads = await Lead.findAll({limit : 7});
 
   if(!leads || leads.length === 0){
     throw new ApiError(404 , "No Leads Found")

@@ -1,10 +1,9 @@
-const db = require('../../db/models');
+
 const { processVoiceAI } = require('../services/ai.services');
 const safeLog = require('../services/leadAndCallLog.services');
 const { createGatherResponse, createPlayResponse } = require('../utils/twilML.utils');
 
-const CallLog = db.CallLog;
-const Lead = db.Lead;
+
 const BASE_URL = process.env.BASE_URL;
 
 
@@ -43,7 +42,7 @@ const handleAIProcessing = async (req, res) => {
     // 3. Log AI Response in CallLog AND Lead Table
     await safeLog(req.body, aiText, 'AI', orgId, finalData);
 
-    const audioUrl = audioFile ? `${BASE_URL}/static/audio/${audioFile}` : null;
+    const audioUrl = audioFile ? `${BASE_URL}/static/audio/${audioFile}?SkipAntiPhishing=true` : null;
     res.type('text/xml').send(createPlayResponse(audioUrl, aiText, orgId));
 
   } catch (error) {

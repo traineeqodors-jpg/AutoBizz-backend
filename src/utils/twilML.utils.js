@@ -4,7 +4,7 @@ const createGatherResponse = (message, orgId) => {
   const twiml = new VoiceResponse();
   const gather = twiml.gather({
     input: 'speech',
-    action: `/api/handle-ai?orgId=${orgId}`, // Preserve orgId
+    action: `/api/voice/handle-ai?orgId=${orgId}`, // Preserve orgId
     speechTimeout: 'auto',
   });
   gather.say(message);
@@ -14,26 +14,26 @@ const createGatherResponse = (message, orgId) => {
 const createPlayResponse = (audioUrl, fallbackText, orgId) => {
   const twiml = new VoiceResponse();
   
-  // 1. AI speaks
-  if (audioUrl) {
-    twiml.play(audioUrl);
-  } else {
-    twiml.say(fallbackText);
-  }
-
-  // 2. WAIT for User to speak (The Conversation Loop)
+ 
   const gather = twiml.gather({
     input: 'speech',
-    action: `/api/voice/handle-ai?orgId=${orgId}`, // Send next speech back to AI
+    action: `/api/voice/handle-ai?orgId=${orgId}`,
     speechTimeout: 'auto',
     method: 'POST'
   });
 
-  // 3. Fallback: If user stays silent, redirect to prompt them again
+  if (audioUrl) {
+    gather.play(audioUrl); 
+  } else {
+    gather.say(fallbackText);
+  }
+
+  
   twiml.redirect(`/api/voice?orgId=${orgId}`); 
 
   return twiml.toString();
 };
+
 
 module.exports = { createGatherResponse, createPlayResponse };
 

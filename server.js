@@ -56,8 +56,14 @@ app.use(express.json());
 app.use(cookieParser())
 app.use(express.urlencoded({extended : true}))
 
+app.use((req, res, next) => {
+  
+  res.setHeader('X-Tunnel-Skip-Anti-Phishing-Page', 'true');
+  next();
+});
+
 app.use("/public" ,express.static(path.join(__dirname, 'public')));
-app.use('/static', express.static(path.join(__dirname, 'public'), {
+app.use('/static/audio', express.static(path.join(__dirname, 'public/audio'), {
   setHeaders: (res, path) => {
     if (path.endsWith('.mp3')) {
       res.setHeader('Content-Type', 'audio/mpeg');
