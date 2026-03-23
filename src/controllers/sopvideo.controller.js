@@ -122,7 +122,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 
   const orgId = req.organization.id;
 
-  console.log(orgId);
+ 
   
   const { scriptContent } = req.body;
   
@@ -153,7 +153,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
         },
       ],
       dimension: { width: 1280, height: 720 },
-      callback_url: "https://dknjfbwx-5000.inc1.devtunnels.ms/webhooks/heygen", // Your public HTTPS endpoint
+      callback_url: process.env.BASE_URL, // Your public HTTPS endpoint
       callback_id: `${orgId}_sop_video`, // (Optional) A custom string to identify this job in your DB
     },
     {

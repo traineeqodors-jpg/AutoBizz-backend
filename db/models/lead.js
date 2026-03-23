@@ -19,11 +19,12 @@ module.exports = (sequelize, DataTypes) => {
   Lead.init({
     orgId: DataTypes.INTEGER,
     name: DataTypes.STRING,
-    phone: DataTypes.STRING,
     email: DataTypes.STRING,
-    subject: DataTypes.TEXT,
-    message: DataTypes.TEXT,
-    confidence_score: DataTypes.INTEGER
+    phone: DataTypes.STRING,
+    company: DataTypes.STRING,
+    status: DataTypes.STRING,
+    confidence_score: DataTypes.INTEGER,
+    metadata: DataTypes.JSONB
   }, {
     sequelize,
     modelName: 'Lead',

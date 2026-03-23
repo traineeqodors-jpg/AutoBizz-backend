@@ -1,30 +1,8 @@
 const db = require("../../db/models");
 const CallLog = db.CallLog
-const Lead = db.Lead
 
-const syncLead = async (from, text, role, orgId) => {
-  if (!from) return;
-  const formattedMsg = `\n[${role}]: ${text}`;
-  
-  const [lead, created] = await Lead.findOrCreate({
-    where: { phone: from },
-    defaults: {
-      name: "Unknown",
-      message: formattedMsg.trim(),
-      orgId: parseInt(orgId),
-      confidence_score: 10
-    }
-  });
 
-  if (!created) {
-    await lead.update({
-      message: db.sequelize.literal(`COALESCE(message, '') || ${db.sequelize.escape(formattedMsg)}`),
-      // We will run the AI Scorer separately at the end of the call to avoid lag
-      confidence_score: (lead.confidence_score || 0) + 1 
-    });
-  }
-  return lead;
-};
+
 
 const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
   const { CallSid, From, To } = reqBody;
@@ -51,7 +29,7 @@ const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
     );
   }
 
-  return await syncLead(From, text, role, orgId);
+ 
 };
 
 

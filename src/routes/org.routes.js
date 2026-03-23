@@ -10,7 +10,7 @@ const {
   editOrg,
   me,
 } = require("../controllers/org.controller.js");
-const validate = require("../middlewares/vailidation.middleware.js");
+const {validate} = require("../middlewares/vailidation.middleware.js");
 const registerSchema = require("../zodSchema/registerSchema.js");
 const { verifyJWT } = require("../middlewares/auth.middleware.js");
 const { ApiError } = require("../utils/ApiError.js");
