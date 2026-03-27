@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
               const org = await Organization.findByPk(lead.orgId);
 
               if (!org || !org.googleRefreshToken) {
-                console.error("❌ No refresh token found for organization");
+                
                 return;
               }
 

@@ -146,6 +146,67 @@ const addLead = asyncHandler(async (req, res) => {
     );
 });
 
+const addLeadForm = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
+  const { name, email, subject, phone, message, company , orgId} = req.body;
+
+ console.log(req.body)
+  if (!name || !email || !subject || !phone || !message || !orgId) {
+    throw new ApiError(400, "All fields are mandatory");
+  }
+
+  
+  let lead = await Lead.findOne({ where: { email, orgId } });
+
+  const newMessageEntry = {
+    subject,
+    message,
+    timestamp: new Date().toISOString(),
+  };
+
+  if (lead) {
+    const updatedMetadata = Array.isArray(lead.metadata?.history) 
+      ? [...lead.metadata.history, newMessageEntry] 
+      : [newMessageEntry];
+
+    const newScore = Math.min((lead.confidence_score || 0) + 15, 100); 
+
+    await lead.update({
+      name, 
+      phone,
+      confidence_score: newScore,
+      metadata: { history: updatedMetadata }
+    }, { 
+      individualHooks: true 
+    });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, lead, "We will back to you soon again"));
+
+  } else {
+    // 4. CREATE NEW LEAD
+    const newLead = await Lead.create({
+      orgId,
+      name,
+      email,
+      phone,
+      company: company || "N/A",
+      status: "new",
+      confidence_score: 20,
+      metadata: { history: [newMessageEntry] },
+      meeting_scheduled: false
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, newLead, "Thank You for filling the form ,we will contact you soon"));
+  }
+});
+
 const getAllLeads = asyncHandler(async (req, res) => {
   const {
     page = 1,
@@ -364,4 +425,5 @@ module.exports = {
   deleteLead,
   startQualificationBatch,
   finalizeCallAndScore,
+  addLeadForm
 };
