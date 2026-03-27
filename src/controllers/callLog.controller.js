@@ -1,4 +1,5 @@
 "use strict";
+const { Op } = require("sequelize");
 const db = require("../../db/models");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
@@ -7,23 +8,83 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const CallLog = db.CallLog;
 
 
-const getAllCallLogs = asyncHandler(async (req, res) => {
 
-  const callLogs = await CallLog.findAll({
-    where: {
-      orgId: req.organization?.id,
-    },
-    order: [["createdAt", "DESC"]],
-    attributes : {
-        exclude : ["orgId"]
+
+const getAllCallLogs = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    status,
+    startDate,
+    endDate,
+    sortBy = "createdAt",
+    order = "DESC",
+  } = req.query;
+
+  const offset = (page - 1) * limit;
+  const orgId = req.organization?.id; // Matching your model's orgId logic
+
+  // 1. Whitelist for security (Added callSid and removed role as it's not in your model)
+  const validSortColumns = ["createdAt", "duration", "status", "callSid", "to", "from"];
+  const sortField = validSortColumns.includes(sortBy) ? sortBy : "createdAt";
+  const sortOrder = order.toUpperCase() === "ASC" ? "ASC" : "DESC";
+
+  // 2. Base Query
+  const queryConditions = {
+    orgId: orgId,
+  };
+
+  // 3. Search logic matched to your model fields (Transcript, To, From, or CallSid)
+  if (search) {
+    queryConditions[Op.or] = [
+      { transcript: { [Op.iLike]: `%${search}%` } },
+      { to: { [Op.iLike]: `%${search}%` } },
+      { from: { [Op.iLike]: `%${search}%` } },
+      { callSid: { [Op.iLike]: `%${search}%` } },
+    ];
+  }
+
+  // 4. Status Filter (Role removed as it's not in the CallLog model)
+  if (status) queryConditions.status = status;
+
+  // 5. Date Range Logic
+  if (startDate || endDate) {
+    queryConditions.createdAt = {};
+    if (startDate) {
+      queryConditions.createdAt[Op.gte] = new Date(`${startDate}T00:00:00.000Z`);
     }
-   // Show newest first
+    if (endDate) {
+      queryConditions.createdAt[Op.lte] = new Date(`${endDate}T23:59:59.999Z`);
+    }
+  }
+
+  // 6. Execute
+  const { count, rows } = await CallLog.findAndCountAll({
+    where: queryConditions,
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+    order: [[sortField, sortOrder]],
+    // Attributes kept as per your model definition
   });
 
- 
-  res.json(new ApiResponse(200 , callLogs || [] , "Call Logs Found"))
-
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        logs: rows,
+        pagination: {
+          totalItems: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: parseInt(page),
+        },
+        filters: { search, status, startDate, endDate }
+      },
+      "Call Logs retrieved successfully"
+    )
+  );
 });
+
 
 
 const getIndividualCallLogs = asyncHandler (async (req,res) => {

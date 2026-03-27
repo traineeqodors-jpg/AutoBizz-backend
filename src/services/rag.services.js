@@ -39,13 +39,14 @@ STRICT RULES:
     messages: [
       { role: "system", content: systemPrompt },
     
-      { role: "user", content: `Context: ${contexts}\n\nQuestion: ${query}\n\nConstraint: Answer in 15 words or less.` },
+      { role: "user", content: `Context: ${contexts}\n\nQuestion: ${query}\n\nConstraint: Answer in 10 words or less.` },
     ],
     
     options: {
-      num_predict: 40, 
+      num_predict: 20, 
       temperature: 0.3, 
     }
+
   });
 
   let cleanContent = response?.message?.content || "";

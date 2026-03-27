@@ -41,6 +41,12 @@ module.exports = (sequelize, DataTypes) => {
         as: "lead",
       });
 
+       Organization.hasMany(models.Meeting, {
+    foreignKey: "orgId",
+    as: "meetings",
+    onDelete: "CASCADE"
+  });
+
 
 
     }
@@ -120,6 +126,10 @@ module.exports = (sequelize, DataTypes) => {
         },
       },
       profileImage: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      googleRefreshToken: {
         type: DataTypes.STRING,
         allowNull: true,
       },

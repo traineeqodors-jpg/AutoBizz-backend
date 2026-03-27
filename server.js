@@ -11,6 +11,7 @@ const documentRouter = require("./src/routes/document.routes.js")
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js")
 const callLogRouter = require("./src/routes/callLog.routes.js")
 const leadRouter = require("./src/routes/lead.routes.js")
+const meetingRouter = require("./src/routes/meeting.routes.js")
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -31,7 +32,8 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:5173", // Local dev
-      "http://192.168.0.37:5173", // Your local IP for other PCs
+      "http://192.168.0.37:5173",
+     "https://9w7lghq0-5173.inc1.devtunnels.ms" // Your local IP for other PCs
     ],
     credentials: true,
   }, // Your React URL
@@ -39,7 +41,7 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://192.168.0.37:5173"],
+    origin: ["http://localhost:5173", "http://192.168.0.37:5173" , "https://9w7lghq0-5173.inc1.devtunnels.ms"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -85,6 +87,7 @@ app.use("/api/callLog" , callLogRouter)
 app.use("/api/lead" , leadRouter)
 app.use("/api/prepareScript", scriptGenRouter);
 app.use("/api/sop", sopVideoRouter);
+app.use("/api/meeting" , meetingRouter)
 
 app.use("/webhooks/heygen", webhooksHeygen);
 
@@ -94,11 +97,12 @@ app.use(errorHandler);
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // Optional: Join a room based on userId to send private updates
   socket.on("join-user-room", (userId) => {
     socket.join(`user_${userId}`);
   });
 });
+
+
 
 
 const startServer = async () => {
@@ -109,7 +113,7 @@ const startServer = async () => {
     // 2. Save it to app.locals so all controllers can access it via req.app.locals
     app.locals.pineconeIndex = index;
  
-    server.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, () => {
       console.log(`Server is running at :${PORT}`);
     });
   } catch (error) {

@@ -9,6 +9,7 @@ const {
   getCurrentOrgDetails,
   editOrg,
   me,
+  handleGoogleToken,
 } = require("../controllers/org.controller.js");
 const {validate} = require("../middlewares/vailidation.middleware.js");
 const registerSchema = require("../zodSchema/registerSchema.js");
@@ -25,6 +26,7 @@ router.put("/", uploadImage.single("file") ,verifyJWT, editOrg);
 router.get("/", getAllOrgs);
 router.post("/logout", verifyJWT, orgLogout);
 router.get("/orgDetails", verifyJWT, getCurrentOrgDetails);
+router.post("/googleToken", verifyJWT, handleGoogleToken);
 
 router.get("/me", verifyJWT , me)
  

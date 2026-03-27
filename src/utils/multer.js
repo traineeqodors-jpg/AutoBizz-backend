@@ -37,6 +37,19 @@ const uploadImage = multer({
   fileFilter: imageOnlyFilter,
 });
 
+const uploadCsv = multer({
+  storage: storage,
+  limits: { fileSize: 1 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    // Check extension and mime type
+    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed!"), false);
+    }
+  }
+});
+
 const uploads = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -88,4 +101,4 @@ const uploads = multer({
   },
 });
 
-module.exports = { uploads , uploadImage};
+module.exports = { uploads , uploadImage , uploadCsv};

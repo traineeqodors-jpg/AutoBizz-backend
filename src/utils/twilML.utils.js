@@ -1,23 +1,23 @@
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
 
-const createGatherResponse = (message, orgId) => {
+// ADD leadId parameter
+const createGatherResponse = (message, orgId, leadId) => {
   const twiml = new VoiceResponse();
   const gather = twiml.gather({
     input: 'speech',
-    action: `/api/voice/handle-ai?orgId=${orgId}`, // Preserve orgId
+    // 💡 Added leadId to action URL
+    action: `/api/voice/handle-ai?orgId=${orgId}&leadId=${leadId}`,
     speechTimeout: 'auto',
   });
   gather.say(message);
   return twiml.toString();
 };
 
-const createPlayResponse = (audioUrl, fallbackText, orgId) => {
+const createPlayResponse = (audioUrl, fallbackText, orgId, leadId) => {
   const twiml = new VoiceResponse();
-  
- 
   const gather = twiml.gather({
     input: 'speech',
-    action: `/api/voice/handle-ai?orgId=${orgId}`,
+    action: `/api/voice/handle-ai?orgId=${orgId}&leadId=${leadId}`,
     speechTimeout: 'auto',
     method: 'POST'
   });
@@ -28,14 +28,10 @@ const createPlayResponse = (audioUrl, fallbackText, orgId) => {
     gather.say(fallbackText);
   }
 
-  
-  twiml.redirect(`/api/voice?orgId=${orgId}`); 
+  // 💡 Added leadId to redirect
+  twiml.redirect(`/api/voice?orgId=${orgId}&leadId=${leadId}`); 
 
   return twiml.toString();
 };
 
-
 module.exports = { createGatherResponse, createPlayResponse };
-
-
-

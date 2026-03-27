@@ -5,7 +5,7 @@ const CallLog = db.CallLog
 
 
 const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
-  const { CallSid, From, To } = reqBody;
+  const { CallSid, From, To  } = reqBody;
   const formattedText = `\n${role}: ${text}`;
 
   // Use upsert or find then update logic to avoid double appending
@@ -18,7 +18,7 @@ const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
     }
   });
 
-  // If it wasn't just created, append the text safely
+
   if (!created) {
     await CallLog.update(
       {

@@ -1,5 +1,6 @@
 "use strict";
 const db = require("../../db/models");
+const { oauth2Client } = require("../services/googleCalender.services");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -295,6 +296,49 @@ const getAllOrgs = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(200, data, "Org data"));
 });
 
+// Hadle Google Login
+const handleGoogleToken = asyncHandler(async (req, res) => {
+  const { code } = req.body;
+ 
+  const { id: orgId, email: currentEmail } = req.organization;
+ 
+  if (!code) {
+    throw new ApiError(400, "Auth code is required");
+  }
+ 
+  // 1. Exchange code for tokens
+  const { tokens } = await oauth2Client.getToken(code);
+ 
+  // 2. Decode the ID Token to get the Payload
+  const ticket = await oauth2Client.verifyIdToken({
+    idToken: tokens.id_token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+  const googleEmail = payload.email;
+ 
+  // 3. Compare Google Email with App Login Email
+  if (googleEmail !== currentEmail) {
+    throw new ApiError(400, `Please choose your registered email`);
+  }
+ 
+  // 4. Update the Database with the Refresh Token
+  if (tokens.refresh_token) {
+    await Organization.update(
+      { googleRefreshToken: tokens.refresh_token },
+      { where: { id: orgId } },
+    );
+  }
+ 
+  // Set credentials for immediate use if needed
+  oauth2Client.setCredentials(tokens);
+ 
+  return res.json(
+    new ApiResponse(200, {}, "Google account Connected Successfully!!"),
+  );
+});
+
+ 
 const me = asyncHandler(async (req,res) => {
    
   return res.json(new ApiResponse(200 , req.organization , "Organizaion Details"))
@@ -308,5 +352,6 @@ module.exports = {
   orgLogout,
   getCurrentOrgDetails,
   editOrg,
-  me
+  me,
+  handleGoogleToken
 };
