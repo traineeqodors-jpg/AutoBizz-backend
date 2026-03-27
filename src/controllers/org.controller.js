@@ -306,10 +306,10 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Auth code is required");
   }
  
-  // 1. Exchange code for tokens
+  
   const { tokens } = await oauth2Client.getToken(code);
  
-  // 2. Decode the ID Token to get the Payload
+  
   const ticket = await oauth2Client.verifyIdToken({
     idToken: tokens.id_token,
     audience: process.env.GOOGLE_CLIENT_ID,
@@ -317,12 +317,11 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
   const payload = ticket.getPayload();
   const googleEmail = payload.email;
  
-  // 3. Compare Google Email with App Login Email
+ 
   if (googleEmail !== currentEmail) {
     throw new ApiError(400, `Please choose your registered email`);
   }
  
-  // 4. Update the Database with the Refresh Token
   if (tokens.refresh_token) {
     await Organization.update(
       { googleRefreshToken: tokens.refresh_token },
@@ -330,7 +329,6 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
     );
   }
  
-  // Set credentials for immediate use if needed
   oauth2Client.setCredentials(tokens);
  
   return res.json(

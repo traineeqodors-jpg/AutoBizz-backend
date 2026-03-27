@@ -11,11 +11,11 @@ const generateAudio = async (text) => {
     if (!text) return null;
 
     try {
-        // 1. Using Turbo v2.5 for Ultra-Low Latency (Fixes Twilio Timeouts)
+        
         const response = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
             outputFormat: "mp3_44100_128",
             text: text, 
-            modelId: "eleven_turbo_v2_5", // ⚡ Changed from multilingual_v2
+            modelId: "eleven_turbo_v2_5",
             voice_settings: {
                 stability: 0.40,       
                 similarity_boost: 0.80,
@@ -33,7 +33,7 @@ const generateAudio = async (text) => {
         const filePath = path.join(audioDir, fileName);
         const fileStream = fs.createWriteStream(filePath);
         
-        // Convert response to a readable stream
+       
         const audioStream = Readable.from(response);
 
         return new Promise((resolve, reject) => {
@@ -41,7 +41,7 @@ const generateAudio = async (text) => {
             fileStream.on('finish', () => {
                 console.log(`⚡ Turbo Audio saved: ${fileName}`);
                 
-                // 💡 Background Clean-up: Delete files older than 5 minutes
+                
                 cleanOldAudio(audioDir);
                 
                 resolve(fileName);
@@ -58,7 +58,7 @@ const generateAudio = async (text) => {
     }
 };
 
-// Simple helper to delete old files and save disk space
+
 const cleanOldAudio = (dir) => {
     fs.readdir(dir, (err, files) => {
         if (err) return;
@@ -66,7 +66,7 @@ const cleanOldAudio = (dir) => {
         files.forEach(file => {
             const filePath = path.join(dir, file);
             fs.stat(filePath, (err, stat) => {
-                if (!err && (now - stat.mtimeMs) > 300000) { // 5 minutes
+                if (!err && (now - stat.mtimeMs) > 300000) { 
                     fs.unlink(filePath, () => {});
                 }
             });

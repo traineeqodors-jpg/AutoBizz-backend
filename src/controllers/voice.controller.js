@@ -15,18 +15,17 @@ const BASE_URL = process.env.BASE_URL;
 const initiateCall = asyncHandler(async (req, res) => {
   const orgId = req.query.orgId || 1;
   const callerPhone = req.body.To; 
+  const from = req.body.From
 
-  console.log(callerPhone , "callerphone")
  
   let lead = await db.Lead.findOne({ where: { phone: callerPhone, orgId } });
 
-  console.log(lead , "lead")
 
   if (!lead) {
    
     lead = await Lead.create({
-      phone: callerPhone,
-      email : "abc@gmail.com",
+      phone: from,
+      email : `dummy${from}@gmail.com`,
       name: "Inbound Caller",
       status: "new",
       orgId,
@@ -34,13 +33,11 @@ const initiateCall = asyncHandler(async (req, res) => {
   }
 
   const welcomeText = "Hello! Thanks for calling. How can I help you today?";
-
-  
   const leadId = lead.id;
 
-  await safeLog(req.body, welcomeText, "AI", orgId);
+  await safeLog(req.body, welcomeText, "AI", orgId , leadId);
 
-  // 3. Pass the leadId into the TwiML flow so it's remembered for the rest of the call
+  
   res.type("text/xml").send(createGatherResponse(welcomeText, orgId, leadId));
 });
 
@@ -57,15 +54,15 @@ const handleAIProcessing = async (req, res) => {
 
   if (!SpeechResult) {
     const retryText = "I didn't catch that. Could you repeat it?";
-    await safeLog(req.body, retryText, "AI", orgId, finalData);
-    return res.type("text/xml").send(createGatherResponse(retryText, orgId));
+    await safeLog(req.body, retryText, "AI", orgId, leadId , finalData);
+    return res.type("text/xml").send(createGatherResponse(retryText, orgId , leadId));
   }
 
   try {
     
-    await safeLog(req.body, SpeechResult, "User", orgId);
+    await safeLog(req.body, SpeechResult, "User", orgId , leadId);
 
-    // 2. AI Processing
+   
     const { aiText, audioFile } = await processVoiceAI(
       SpeechResult,
       pineconeIndex,
@@ -73,13 +70,12 @@ const handleAIProcessing = async (req, res) => {
       leadId,
     );
 
-    // 3. Log AI Response in CallLog AND Lead Table
-    await safeLog(req.body, aiText, "AI", orgId, finalData);
+    await safeLog(req.body, aiText, "AI", orgId, leadId , finalData);
 
     const audioUrl = audioFile
       ? `${BASE_URL}/static/audio/${audioFile}?SkipAntiPhishing=true`
       : null;
-    res.type("text/xml").send(createPlayResponse(audioUrl, aiText, orgId));
+    res.type("text/xml").send(createPlayResponse(audioUrl, aiText, orgId , leadId));
   } catch (error) {
     console.error("AI Processing Error:", error);
     res

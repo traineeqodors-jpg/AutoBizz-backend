@@ -113,7 +113,7 @@ const startServer = async () => {
     // 2. Save it to app.locals so all controllers can access it via req.app.locals
     app.locals.pineconeIndex = index;
  
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running at :${PORT}`);
     });
   } catch (error) {

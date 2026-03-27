@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
         as: "meetings",
         onDelete: "SET NULL",
       });
+      Lead.hasMany(models.CallLog, {
+        foreignKey: "leadId",
+        as: "callLogs",
+      });
     }
   }
   Lead.init(
@@ -52,7 +56,6 @@ module.exports = (sequelize, DataTypes) => {
               const org = await Organization.findByPk(lead.orgId);
 
               if (!org || !org.googleRefreshToken) {
-                
                 return;
               }
 

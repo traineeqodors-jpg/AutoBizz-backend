@@ -188,7 +188,7 @@ const addLeadForm = asyncHandler(async (req, res) => {
       .json(new ApiResponse(200, lead, "We will back to you soon again"));
 
   } else {
-    // 4. CREATE NEW LEAD
+   
     const newLead = await Lead.create({
       orgId,
       name,
@@ -323,7 +323,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
   for (let i = 0; i < leads.length; i++) {
     const lead = leads[i];
 
-    // 🛡️ Stagger calls to protect Ollama
+    
     await new Promise((resolve) => setTimeout(resolve, 4000));
 
     try {
@@ -338,7 +338,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
 
       console.log("Working of calls");
 
-      // 📢 Emit progress to the specific organization's room
+    
       io.emit(`batch-update-${orgId}`, {
         message: `Calling ${lead.name}...`,
         current: i + 1,
@@ -350,7 +350,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
     }
   }
 
-  // ✅ Final signal
+
   io.emit(`batch-update-${orgId}`, {
     message: "Batch qualification finished!",
     status: "completed",
@@ -361,10 +361,10 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
   const { leadId, orgId } = req.query;
   const { CallStatus, CallDuration, CallSid } = req.body;
 
-  // 1. Respond to Twilio IMMEDIATELY (Stops the 30s timeout)
+ 
   res.sendStatus(200);
 
-  // 2. Run the rest in the background (No 'await' on the heavy stuff)
+ 
   (async () => {
     try {
       console.log(`Background Scoring Started for Lead: ${leadId}`);

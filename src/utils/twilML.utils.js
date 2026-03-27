@@ -1,8 +1,10 @@
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
 
-// ADD leadId parameter
+
 const createGatherResponse = (message, orgId, leadId) => {
   const twiml = new VoiceResponse();
+
+
   const gather = twiml.gather({
     input: 'speech',
     // 💡 Added leadId to action URL

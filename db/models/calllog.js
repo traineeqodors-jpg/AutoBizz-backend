@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
         as: "organization",
         onDelete: "CASCADE",
       });
+      CallLog.belongsTo(models.Lead, {
+        foreignKey: "leadId",
+        as: "lead",
+        onDelete: "SET NULL",
+      });
     }
   }
   CallLog.init(
@@ -24,6 +29,8 @@ module.exports = (sequelize, DataTypes) => {
       status: DataTypes.STRING,
       transcript: DataTypes.TEXT,
       orgId: DataTypes.INTEGER,
+
+      leadId: DataTypes.INTEGER,
     },
     {
       sequelize,

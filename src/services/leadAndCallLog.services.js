@@ -1,23 +1,21 @@
 const db = require("../../db/models");
-const CallLog = db.CallLog
+const CallLog = db.CallLog;
 
-
-
-
-const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
-  const { CallSid, From, To  } = reqBody;
+const safeLog = async (reqBody, text, role, orgId, leadId, extraData = {}) => {
+  const { CallSid, From, To } = reqBody;
   const formattedText = `\n${role}: ${text}`;
 
-  // Use upsert or find then update logic to avoid double appending
   const [log, created] = await CallLog.findOrCreate({
     where: { callSid: CallSid },
     defaults: {
-      from: From, to: To, orgId: parseInt(orgId),
+      from: From,
+      to: To,
+      orgId: parseInt(orgId),
+      leadId: leadId, 
       status: 'in-progress',
       transcript: formattedText.trim()
     }
   });
-
 
   if (!created) {
     await CallLog.update(
@@ -28,9 +26,6 @@ const safeLog = async (reqBody, text, role, orgId, extraData = {}) => {
       { where: { callSid: CallSid } }
     );
   }
-
- 
 };
 
-
-module.exports = safeLog
+module.exports = safeLog;
