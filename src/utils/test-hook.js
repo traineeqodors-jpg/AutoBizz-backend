@@ -6,10 +6,10 @@ const Lead = db.Lead
 async function testHook() {
   try {
     // 1. Find a specific lead
-    const leadId = 1352; 
+    const leadId = 1220; 
     const lead = await Lead.findByPk(leadId);
     
-    if (!lead) return console.log("❌ Lead not found in database.");
+    if (!lead) return console.log(" Lead not found in database.");
 
     console.log(`Current Score for ${lead.name}:`, lead.confidence_score);
     
@@ -27,7 +27,7 @@ async function testHook() {
       }
     );
 
-    console.log("✅ Update sent. Check your SERVER console now.");
+    console.log(" Update sent. Check your SERVER console now.");
   } catch (err) {
     console.error("Script Error:", err);
   }
