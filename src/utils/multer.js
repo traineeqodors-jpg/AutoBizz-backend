@@ -19,29 +19,28 @@ const storage = multer.diskStorage({
 });
 
 const imageOnlyFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|webp/; // Removed pdf, doc, etc.
+  const allowedTypes = /jpeg|jpg|png|webp/; 
   const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimeType = allowedTypes.test(file.mimetype);
 
   if (extName && mimeType) {
     cb(null, true);
   } else {
-    // This error will be caught by your global error handler
+   
     cb(new Error("Only Image files (JPG, PNG, WEBP) are allowed for profile photos"));
   }
 };
 
 const uploadImage = multer({
-  storage, // Re-use your existing diskStorage
+  storage, 
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for images
   fileFilter: imageOnlyFilter,
 });
 
 const uploadCsv = multer({
-  storage: storage,
+  storage,
   limits: { fileSize: 1 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // Check extension and mime type
     if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
       cb(null, true);
     } else {
@@ -86,7 +85,7 @@ const uploads = multer({
 ];
 
 
-    // 3. Check Extension via Regex
+   
     const fileTypes = /jpeg|jpg|png|webp|svg|pdf|doc|docx|ppt|csv|txt|pptx/;
     const extName = fileTypes.test(path.extname(file.originalname).toLowerCase());
 

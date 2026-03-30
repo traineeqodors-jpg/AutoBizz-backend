@@ -5,7 +5,7 @@ const pc = new Pinecone({
 });
  
 async function initPinecone(businessName) {
-  //   const indexName = `biz-${businessId.toLowerCase().replace(/[^a-z0-9]/g, "-")}`; // Pinecone names must be lowercase
+ 
  
   const indexName = "business-vault";
  
@@ -16,16 +16,6 @@ async function initPinecone(businessName) {
     if (!exists) {
       console.log(`Creating Inference Index for business: ${indexName}`);
  
-      // await pc.createIndexForModel({
-      //   name: indexName,
-      //   cloud: "aws",
-      //   region: "us-east-1",
-      //   embed: {
-      //     model: "llama-text-embed-v2",
-      //     fieldMap: { text: "chunk_text" },
-      //   },
-      //   waitUntilReady: true,
-      // });
       await pc.createIndex({
         name: "business-vault",
         dimension: 768,

@@ -23,19 +23,18 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
   } = req.query;
 
   const offset = (page - 1) * limit;
-  const orgId = req.organization?.id; // Matching your model's orgId logic
+  const orgId = req.organization?.id; 
 
-  // 1. Whitelist for security (Added callSid and removed role as it's not in your model)
+ 
   const validSortColumns = ["createdAt", "duration", "status", "callSid", "to", "from"];
   const sortField = validSortColumns.includes(sortBy) ? sortBy : "createdAt";
   const sortOrder = order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-  // 2. Base Query
+
   const queryConditions = {
     orgId: orgId,
   };
 
-  // 3. Search logic matched to your model fields (Transcript, To, From, or CallSid)
   if (search) {
     queryConditions[Op.or] = [
       { transcript: { [Op.iLike]: `%${search}%` } },
@@ -45,10 +44,10 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
     ];
   }
 
-  // 4. Status Filter (Role removed as it's not in the CallLog model)
+
   if (status) queryConditions.status = status;
 
-  // 5. Date Range Logic
+
   if (startDate || endDate) {
     queryConditions.createdAt = {};
     if (startDate) {
@@ -59,13 +58,13 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
     }
   }
 
-  // 6. Execute
+  
   const { count, rows } = await CallLog.findAndCountAll({
     where: queryConditions,
     limit: parseInt(limit),
     offset: parseInt(offset),
     order: [[sortField, sortOrder]],
-    // Attributes kept as per your model definition
+ 
   });
 
   return res.status(200).json(

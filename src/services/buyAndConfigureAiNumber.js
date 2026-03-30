@@ -23,17 +23,16 @@ const generateSupportNumber = asyncHandler(async (req, res) => {
     throw new Error("Tunnel not ready yet. Please try again in a moment.");
   }
 
-  // A. Find an available number (US Local as example)
+  
   const available = await client.availablePhoneNumbers('US').local.list({ limit: 1 });
   if (available.length === 0) throw new Error("No numbers available");
 
   const selectedNumber = available[0].phoneNumber;
 
-  // B. Purchase and Configure Webhooks Programmatically
+
   const purchased = await client.incomingPhoneNumbers.create({
     phoneNumber: selectedNumber,
     friendlyName: `Org ${orgId} Support Line`,
-    // Use the dynamic tunnel URL for the webhooks
     voiceUrl: `${globalTunnelUrl}/api/voice/initiate?orgId=${orgId}`,
     statusCallback: `${globalTunnelUrl}/api/voice/callback?orgId=${orgId}`,
     statusCallbackMethod: 'POST'

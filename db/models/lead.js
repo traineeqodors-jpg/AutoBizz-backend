@@ -44,7 +44,6 @@ module.exports = (sequelize, DataTypes) => {
       modelName: "Lead",
       hooks: {
         afterBulkUpdate: (options) => {
-          // Force individual hooks to run if they weren't explicitly set
           options.individualHooks = true;
         },
         afterUpdate: async (lead, options) => {
@@ -59,7 +58,7 @@ module.exports = (sequelize, DataTypes) => {
                 return;
               }
 
-              // 1. Prepare Times
+
               const startTime = new Date();
               startTime.setDate(startTime.getDate() + 1);
               const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
@@ -71,13 +70,13 @@ module.exports = (sequelize, DataTypes) => {
                 endTime: endTime.toISOString(),
               };
 
-              // 2. Call Google Service
+            
               const calendarData = await addCalendarEvent(
                 org.googleRefreshToken,
                 eventDetails,
               );
 
-              // 3. STORE MEETING IN DATABASE
+           
               await Meeting.create(
                 {
                   googleEventId: calendarData.id,
@@ -85,14 +84,14 @@ module.exports = (sequelize, DataTypes) => {
                   description: eventDetails.description,
                   startTime: startTime,
                   endTime: endTime,
-                  meetLink: calendarData.hangoutLink || calendarData.htmlLink, // Store the Meet or Calendar link
+                  meetLink: calendarData.hangoutLink || calendarData.htmlLink, 
                   orgId: lead.orgId,
                   leadId: lead.id,
                 },
                 { transaction: options.transaction },
               );
 
-              // 4. Update Lead Flag
+             
               await lead.update(
                 { meeting_scheduled: true },
                 { hooks: false, transaction: options.transaction },

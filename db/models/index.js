@@ -11,7 +11,6 @@ const db = {};
 
 
 db.Organization = require('./organization')(sequelize, Sequelize.DataTypes);
-db.Tenant = require("./tenant")(sequelize, Sequelize.DataTypes);
 db.PasswordReset = require("./passwordreset")(sequelize, Sequelize.DataTypes);
 db.Document = require("./document")(sequelize, Sequelize.DataTypes);
 db.OrganizationDetail = require("./organizationdetail")(sequelize , Sequelize.DataTypes)

@@ -25,7 +25,7 @@ const getOrganizationDetails = asyncHandler(async (req, res) => {
 });
 
 
-// Add Organization Details
+
 const addOrganizationDetails = asyncHandler(async (req, res) => {
   const id = req?.organization?.id;
   if (!id) {
@@ -40,7 +40,7 @@ const addOrganizationDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Details already exist for this organization. Use edit instead.");
   }
 
-  // 2. Create new details
+
   const details = await OrganizationDetails.create({
     orgId: id,
     orgCategory,
@@ -62,7 +62,7 @@ const editOrganizationDetails = asyncHandler(async (req, res) => {
 
   const { orgCategory, description, startedInYear } = req.body;
 
-  // 1. Find the existing record
+
   const details = await OrganizationDetails.findOne({ where: { orgId: id } });
 
   if(!details){
@@ -80,7 +80,6 @@ const editOrganizationDetails = asyncHandler(async (req, res) => {
     
   }
 
-  // 2. Update the fields
   const updatedDetails = await details.update({
     orgCategory: orgCategory || details.orgCategory,
     description: description,

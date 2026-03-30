@@ -7,7 +7,6 @@ const createGatherResponse = (message, orgId, leadId) => {
 
   const gather = twiml.gather({
     input: 'speech',
-    // 💡 Added leadId to action URL
     action: `/api/voice/handle-ai?orgId=${orgId}&leadId=${leadId}`,
     speechTimeout: 'auto',
   });
@@ -30,7 +29,7 @@ const createPlayResponse = (audioUrl, fallbackText, orgId, leadId) => {
     gather.say(fallbackText);
   }
 
-  // 💡 Added leadId to redirect
+  
   twiml.redirect(`/api/voice?orgId=${orgId}&leadId=${leadId}`); 
 
   return twiml.toString();

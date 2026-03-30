@@ -31,7 +31,7 @@ const addLead = asyncHandler(async (req, res) => {
   const filePath = req.file.path;
   const leads = [];
 
-  // 1. CONTENT VALIDATION
+
   const fileBuffer = fs.readFileSync(filePath);
   const fileHash = crypto.createHash("md5").update(fileBuffer).digest("hex");
 
@@ -44,7 +44,7 @@ const addLead = asyncHandler(async (req, res) => {
     );
   }
 
-  // 2. DUPLICATE FILE CHECK
+
   const duplicateFile = await Lead.findOne({
     where: {
       orgId: businessId,
@@ -57,7 +57,6 @@ const addLead = asyncHandler(async (req, res) => {
     throw new ApiError(400, "This file content has already been uploaded.");
   }
 
-  // 3. PARSING
   const parsePromise = new Promise((resolve, reject) => {
     let isFirstRow = true;
     const requiredHeaders = ["Lead Owner", "Email 1", "Phone 1", "Company"];
@@ -104,12 +103,12 @@ const addLead = asyncHandler(async (req, res) => {
 
   await parsePromise;
 
-  // Cleanup file immediately after parsing is successful
+
   fs.unlinkSync(filePath);
 
   if (leads.length === 0) throw new ApiError(400, "CSV is empty.");
 
-  // 4. DATABASE UPSERT
+  
   const savedLeads = await Lead.bulkCreate(leads, {
     conflictAttributes: ["email"],
     updateOnDuplicate: [
@@ -122,7 +121,11 @@ const addLead = asyncHandler(async (req, res) => {
     ],
   });
 
-  // 5. BACKGROUND BATCH TRIGGER
+  if(!savedLeads){
+    throw new ApiError(400 , "Cannot Insert leads in bulk")
+  }
+
+  
   const leadIds = savedLeads.map((l) => l.id);
 
   axios
@@ -153,7 +156,7 @@ const addLeadForm = asyncHandler(async (req, res) => {
 
   const { name, email, subject, phone, message, company , orgId} = req.body;
 
- console.log(req.body)
+
   if (!name || !email || !subject || !phone || !message || !orgId) {
     throw new ApiError(400, "All fields are mandatory");
   }
@@ -201,6 +204,10 @@ const addLeadForm = asyncHandler(async (req, res) => {
       meeting_scheduled: false
     });
 
+    if(!newLead){
+      throw new ApiError(400 , "Cannot create new Lead")
+    }
+
     return res
       .status(201)
       .json(new ApiResponse(201, newLead, "Thank You for filling the form ,we will contact you soon"));
@@ -214,8 +221,8 @@ const getAllLeads = asyncHandler(async (req, res) => {
     search = "",
     status,
     minScore,
-    startDate, // Format: YYYY-MM-DD
-    endDate, // Format: YYYY-MM-DD
+    startDate, 
+    endDate, 
     sortBy = "createdAt",
     order = "DESC",
   } = req.query;
@@ -223,7 +230,7 @@ const getAllLeads = asyncHandler(async (req, res) => {
   const offset = (page - 1) * limit;
   const businessId = req.organization.id;
 
-  // 1. Security Whitelist for sorting
+ 
   const validSortColumns = [
     "createdAt",
     "confidence_score",
@@ -234,12 +241,11 @@ const getAllLeads = asyncHandler(async (req, res) => {
   const sortField = validSortColumns.includes(sortBy) ? sortBy : "createdAt";
   const sortOrder = order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-  // 2. Base Query (Scoped to Organization)
+
   const queryConditions = {
     orgId: businessId,
   };
 
-  // 3. Search Logic (Name, Email, Company)
   if (search) {
     queryConditions[Op.or] = [
       { name: { [Op.iLike]: `%${search}%` } },
@@ -248,12 +254,12 @@ const getAllLeads = asyncHandler(async (req, res) => {
     ];
   }
 
-  // 4. Status and Score Filters
+  
   if (status) queryConditions.status = status;
   if (minScore)
     queryConditions.confidence_score = { [Op.gte]: parseInt(minScore) };
 
-  // 5. Date Range Filter
+
   if (startDate || endDate) {
     queryConditions.createdAt = {};
     if (startDate) {
@@ -266,7 +272,7 @@ const getAllLeads = asyncHandler(async (req, res) => {
     }
   }
 
-  // 6. Execute Query
+  
   const { count, rows } = await Lead.findAndCountAll({
     where: queryConditions,
     limit: parseInt(limit),
@@ -313,8 +319,13 @@ const deleteLead = asyncHandler(async (req, res) => {
 });
 
 const startQualificationBatch = asyncHandler(async (req, res) => {
+
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
   const { leadIds, orgId } = req.body;
-  const io = req.app.get("io"); // 🔌 Access socket instance
+  const io = req.app.get("io"); 
 
   const leads = await db.Lead.findAll({ where: { id: leadIds } });
 
@@ -324,7 +335,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
     const lead = leads[i];
 
     
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     try {
       await client.calls.create({
@@ -369,7 +380,7 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
     try {
       console.log(`Background Scoring Started for Lead: ${leadId}`);
 
-      // Update CallLog status/duration
+     
       await db.CallLog.update(
         { 
           status: CallStatus, 
@@ -378,7 +389,7 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
         { where: { callSid: CallSid } }
       );
 
-      // Fetch logs for transcript
+    
       const logs = await db.CallLog.findAll({
         where: { callSid: CallSid },
         order: [["createdAt", "ASC"]],
@@ -388,14 +399,17 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
       const transcript = logs.map((l) => l.transcript || l.message).join("\n");
 
-      // AI Scoring (The slow part)
+    
       const scoringResult = await calculateLeadScore(transcript);
+
+      if(!scoringResult){
+        throw new ApiError(400 , "Error while Generating Score of Lead")
+      }
       
       let leadScore = Number(scoringResult?.score);
       if (isNaN(leadScore)) leadScore = 10;
       leadScore = Math.round(leadScore);
 
-      // Update Lead Table
       await db.Lead.update(
         { 
           confidence_score: leadScore, 
@@ -408,13 +422,13 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
 
 
-      // Notify Frontend via Socket
+     
       const io = req.app.get("io");
       io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
 
-      console.log(`✅ Background Scoring Complete: ${leadScore}`);
+      console.log(`Background Scoring Complete: ${leadScore}`);
     } catch (error) {
-      console.error("❌ Background Scoring Failed:", error.message);
+      console.error(" Background Scoring Failed:", error.message);
     }
   })(); 
 });

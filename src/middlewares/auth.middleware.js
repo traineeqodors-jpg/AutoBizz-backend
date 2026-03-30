@@ -17,13 +17,13 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
  
   req.organization = null;
  
-  // if don't have any Cookie Send Error
+
   if (!accessToken && !refreshToken) {
-    // return res.status(200).json();
+
     throw new ApiError(401, "Bearer token is Required");
   }
  
-  // If have Access Token
+
   if (accessToken) {
     const org = await accesTokenVerification(accessToken);
  
@@ -32,7 +32,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
     return next();
   }
  
-  // If Refresh Token Available then create Access Token
+ 
   if (refreshToken) {
     const org = await refreshTokenVerfication(refreshToken, req, res);
  
@@ -49,36 +49,7 @@ const roleMiddleware = (roles) => (req, res, next) => {
   next();
 };
  
-const verifyTenant = asyncHandler(async (req, res, next) => {
-  const bearerToken =
-    req.cookies?.accessToken ||
-    req.header("Authorization")?.replace("Bearer ", "");
+
  
-  if (!bearerToken) {
-    throw new ApiError(401, "Bearer token is Required");
-  }
- 
-  const decodedToken = jwt.verify(bearerToken, process.env.ACCESS_TOKEN_SECRET);
- 
-  if (!decodedToken) {
-    throw new ApiError(401, "Invalid or Expired Token");
-  }
- 
-  const tenant = await Tenant.findByPk(decodedToken?.id, {
-    attributes: {
-      exclude: ["password", "refreshToken"],
-    },
-  });
- 
-  if (!tenant) {
-    throw new ApiError(401, "Invalid Access Token");
-  }
- 
-  req.tenant = tenant;
-  req.tenant.type = decodedToken?.type;
- 
-  next();
-});
- 
-module.exports = { verifyJWT, roleMiddleware, verifyTenant };
+module.exports = { verifyJWT, roleMiddleware };
  

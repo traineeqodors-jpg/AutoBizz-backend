@@ -19,15 +19,15 @@ const getAllMeetings = asyncHandler(async (req, res) => {
     page = 1 
   } = req.query;
 
-  // 1. Validation: orgId is mandatory for multi-tenant safety
+  
   if (!orgId) {
     throw new ApiError(400, "Organization ID is required to fetch meetings");
   }
 
-  // 2. Build Query Conditions
+ 
   const queryConditions = { orgId };
 
-  // 3. Optional Date Range Filter
+
   if (startDate && endDate) {
     queryConditions.startTime = {
       [Op.between]: [new Date(startDate), new Date(endDate)],
@@ -36,7 +36,7 @@ const getAllMeetings = asyncHandler(async (req, res) => {
 
   const offset = (page - 1) * limit;
 
-  // 4. Fetch Data with Eager Loading
+
   const { count, rows } = await Meeting.findAndCountAll({
     where: queryConditions,
     limit: parseInt(limit),
@@ -45,13 +45,13 @@ const getAllMeetings = asyncHandler(async (req, res) => {
     include: [
       {
         model: Lead,
-        as: "lead", // Ensure this matches your Meeting model association alias
+        as: "lead", 
         attributes: ["id", "name", "email", "company", "status"],
       },
     ],
   });
 
-  // 5. Return Structured Response
+
   return res
     .status(200)
     .json(

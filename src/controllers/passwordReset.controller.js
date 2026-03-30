@@ -41,7 +41,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     },
   });
 
-  const resetUrl = `http://192.168.0.37:5173/resetpassword/${token}`;
+  const resetUrl = `${process.env.BASE_URL}/resetpassword/${token}`;
   await transporter.sendMail({
     to: email,
     subject: "Password Reset Request",
@@ -60,7 +60,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   const resetRecord = await PasswordReset.findOne({
     where: {
       token,
-      expiresIn: { [Op.gt]: new Date() }, // Must be greater than current time
+      expiresIn: { [Op.gt]: new Date() }, 
     },
   });
 
@@ -71,7 +71,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   
   
 
-  // 3. Update the Organization's password
+  
  const org = await Organization.findByPk(resetRecord.orgId);
 
  if(!org){
@@ -84,7 +84,7 @@ const resetPassword = asyncHandler(async (req, res) => {
  }
 
 
- //Checking Password Validation
+
  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
  if(!passwordRegex.test(newPassword)){
    throw new ApiError(400 ,"Password must be at least 8 characters long and include one number and one special character");
@@ -95,7 +95,7 @@ org.password = newPassword;
 await org.save({validate : false}); 
   
 
-  // 4. Delete the token record after successful reset
+  
   await resetRecord.destroy();
 
   res.status(200).json({ message: "Password reset successful." });

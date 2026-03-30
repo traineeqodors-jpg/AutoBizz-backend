@@ -5,44 +5,11 @@ const path = require("path");
 const Sop = db.Sop;
 
 const getVideoStatus = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
 
-  // const contentStr = req.body.toString("utf-8");
-  // console.log(contentStr);
-  
-  // // 1. EXTRACT THE SIGNATURE FROM HEADERS
-  // console.log(req.head);
-  
-  // const signature = req.headers["signature"];
-  
-  // console.log(signature);
-  
-
-  //   // 2. GET THE RAW PAYLOAD
-  //   // Note: Verification works best with the raw request body string
-  // const payload = JSON.stringify(req.body);
-  // console.log(payload);
-  
-
-  //   // 3. GENERATE YOUR OWN SIGNATURE USING THE SECRET
-  // const secret = process.env.HEYGEN_WEBHOOK_SECRET;
-  
-  // console.log(secret);
-  
-  //   const computedSignature = crypto
-  //     .createHmac("sha256", secret)
-  //     .update(contentStr)
-  //     .digest("hex");
-  
-  //   console.log(computedSignature);
-    
-
-  //   // 4. COMPARE AND REJECT IF THEY DON'T MATCH
-  //   if (computedSignature !== signature) {
-  //     console.error("Invalid Signature! Request might not be from HeyGen.");
-  //     return res.status(401).json({ message: "Unauthorized" });
-  //   }
-
-  const { event_type, event_data } = req.body; // HeyGen uses event_data
+  const { event_type, event_data } = req.body;
 
   console.log(event_type);
 
@@ -60,7 +27,6 @@ const getVideoStatus = asyncHandler(async (req, res) => {
         status: "completed",
       };
 
-      // 1. Update DB
       await Sop.update(
         { videoUrl: videoData.videoUrl },
         { where: { videoId: videoData.videoId } },
@@ -68,12 +34,10 @@ const getVideoStatus = asyncHandler(async (req, res) => {
 
       io.emit("video_updated", videoData);
 
-      // 2. Setup Path & Ensure Directory Exists
       const dir = path.join(__dirname, "videos");
       if (!fs.existsSync(dir)) fs.mkdirSync(dir);
       const localPath = path.join(dir, `${videoData.videoId}.mp4`);
 
-      // 3. Download using a Stream and handle it as a Promise
       try {
         const response = await axios({
           url: videoData.videoUrl,
@@ -86,8 +50,7 @@ const getVideoStatus = asyncHandler(async (req, res) => {
 
         writer.on("finish", () => {
           console.log(`Video ${videoData.videoId} saved to ${localPath}`);
-          // If this is a standard API call, respond here.
-          // If it's a webhook, the response might have already been sent.
+
           if (!res.headersSent)
             res.send({ message: "Success", path: localPath });
         });
@@ -104,7 +67,6 @@ const getVideoStatus = asyncHandler(async (req, res) => {
     }
 
     case "avatar_video.fail":
-      // HeyGen usually sends the reason in 'message' or 'error'
       const errorReason = event_data.message || "Unknown error";
       videoData = {
         videoId: event_data.video_id,
@@ -132,7 +94,6 @@ const getVideoStatus = asyncHandler(async (req, res) => {
       console.log(`Unhandled event type: ${event_type}`);
   }
 
-  // CRITICAL: Always return 200 so HeyGen doesn't retry for 24 hours
   res.status(200).json({ message: "Webhook received", data: { videoData } });
 });
 

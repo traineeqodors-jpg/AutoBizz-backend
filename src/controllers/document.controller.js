@@ -9,9 +9,8 @@ const fs = require("fs").promises;
 
 const Document = db.Document;
 
-// Upload document and Upsert into pinecone
 const uploadDocuments = asyncHandler(async (req, res) => {
-  // 1. Check if any files arrived
+ 
   if (!req.file) {
     throw new ApiError(
       400,
@@ -30,15 +29,15 @@ const uploadDocuments = asyncHandler(async (req, res) => {
  console.log(uuid)
   //AWS S3 Logic for generating url
 
-  // 2. Generating docRecord to store
+
   const documentRecord = {
-    docType: req.file?.mimetype, // e.g. 'application/pdf' or 'image/png'
-    docUrl: `/public/${req.file?.filename}`, // Path saved in DB
+    docType: req.file?.mimetype, 
+    docUrl: `/public/${req.file?.filename}`, 
     orgId: parseInt(orgId),
     pineconeId: uuid,
   };
 
-  // 3. Insert data in DB
+  
   const savedDoc = await Document.create(documentRecord);
 
   if (!savedDoc) {
@@ -62,18 +61,18 @@ const getMyDocuments = asyncHandler(async (req, res) => {
     );
   }
 
-  // 2. Fetch the documents linked to this specific orgId
+ 
   const documents = await Document.findAll({
     where: { orgId: organizationId },
     order: [["createdAt", "DESC"]], // Show newest first
-    attributes: ["id", "docType", "pineconeId" ,"docUrl", "createdAt"], // Security: don't return orgId if not needed
+    attributes: ["id", "docType", "pineconeId" ,"docUrl", "createdAt"], 
   });
 
   if (!documents) {
     throw new ApiError(400, "Cant Get Documents");
   }
 
-  // 3. Return the list
+
   res.json(new ApiResponse(200, documents, "All Documents"));
 });
 

@@ -2,22 +2,25 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { Ollama } = require("ollama");
 const ollama = new Ollama();
-const { parse } = require('yaml');
-const fs = require('fs');
+const { parse } = require("yaml");
+const fs = require("fs");
 const db = require("../../db/models");
 const { default: axios } = require("axios");
 const path = require("path");
+const { ApiError } = require("../utils/ApiError");
 const Sop = db.Sop;
 
 const testDownload = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
   const { videoUrl } = req.body;
-  
 
   const dir = path.join(process.cwd(), "public", "videos");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
   const localPath = path.join(dir, `TEST.mp4`);
 
-  // 3. Download using a Stream and handle it as a Promise
   const response = await axios({
     url: videoUrl,
     method: "GET",
@@ -29,36 +32,28 @@ const testDownload = asyncHandler(async (req, res) => {
 
   writer.on("finish", () => {
     console.log(`Video test saved to ${localPath}`);
-    // If this is a standard API call, respond here.
-    // If it's a webhook, the response might have already been sent.
-    if (!res.headersSent)
-      res.send({ message: "Success", path: localPath });
+    if (!res.headersSent) res.send({ message: "Success", path: localPath });
   });
 
   writer.on("error", (err) => {
     console.error("Stream error:", err);
     if (!res.headersSent) res.status(500).send("File system error");
-        
-  })
+  });
 
-  res.status(200).json(new ApiResponse(200, writer, "VIDEO DOWNLOADED"))
+  res.status(200).json(new ApiResponse(200, writer, "VIDEO DOWNLOADED"));
 });
 
-
 const prepareScript = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
 
- 
-  
   const { fileUuids, query } = req.body;
- 
-
-  
 
   const businessId = req.organization.id;
 
   const file = fs.readFileSync("./prompts.yaml", "utf8");
   const promptConfig = parse(file).sop_scriptwriter;
-  
 
   const searchQuery = query;
 
@@ -81,15 +76,11 @@ const prepareScript = asyncHandler(async (req, res) => {
     includeMetadata: true,
   });
 
-  
-  
-
   const contextChunks = queryResponse.matches
     .filter((match) => match.score >= 0.5)
     .map((match) => match.metadata.chunk_text);
-  
+
   console.log(contextChunks);
-  
 
   if (!contextChunks || contextChunks.length < 3) {
     return res
@@ -98,7 +89,6 @@ const prepareScript = asyncHandler(async (req, res) => {
   }
 
   const contextText = contextChunks.join("\n\n---\n\n");
-  
 
   const chatResponse = await ollama.chat({
     model: promptConfig.model,
@@ -109,28 +99,24 @@ const prepareScript = asyncHandler(async (req, res) => {
         content: `Technical Documentation Context:\n${contextText}`,
       },
     ],
-    
   });
-
-  
 
   const finalScript = chatResponse?.message?.content;
   res.json(new ApiResponse(200, finalScript, "Final Script!"));
 });
 
 const generateSOPVideo = asyncHandler(async (req, res) => {
-
   const orgId = req.organization.id;
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
 
- 
-  
   const { scriptContent } = req.body;
-  
 
   const newSop = {
     orgId,
-    videoScript: scriptContent
-  }
+    videoScript: scriptContent,
+  };
 
   const data = await Sop.create(newSop);
 
@@ -138,7 +124,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
     "https://api.heygen.com/v2/video/generate", // Updated Endpoint
     {
       video_inputs: [
-        // v2 uses video_inputs, not scenes
+     
         {
           character: {
             type: "avatar",
@@ -153,8 +139,8 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
         },
       ],
       dimension: { width: 1280, height: 720 },
-      callback_url: process.env.BASE_URL, // Your public HTTPS endpoint
-      callback_id: `${orgId}_sop_video`, // (Optional) A custom string to identify this job in your DB
+      callback_url: process.env.BASE_URL, 
+      callback_id: `${orgId}_sop_video`, 
     },
     {
       headers: {
@@ -165,7 +151,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
   );
 
   const videoId = response.data.data.video_id;
-  data.videoId = videoId
+  data.videoId = videoId;
   await data.save();
 
   res.json(
@@ -178,8 +164,6 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
-
-  
   const businessId = req?.organization?.id;
 
   if (!businessId) {
@@ -192,19 +176,22 @@ const getAllVideos = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.json(new ApiResponse(200, videos, "All Sop Videos"));
+  if(!videos){
+    throw new ApiError(400 , "Cant Fetch Videos")
+  }
+
+  return res.json(new ApiResponse(200, videos || [], "All Sop Videos"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const businessId = req?.organization?.id;
 
-  // 1. Check for authentication/organization context
   if (!businessId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
 
-  // 2. Find the video and ensure it belongs to the current organization
+  
   const video = await Sop.findOne({
     where: {
       id: videoId,
@@ -212,7 +199,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     },
   });
 
-  // 3. Handle 404 if the video doesn't exist or isn't owned by the org
+ 
   if (!video) {
     throw new ApiError(
       404,
@@ -220,14 +207,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
     );
   }
 
-  // 4. Perform the deletion
+
   await video.destroy();
 
-  // 5. Return success response
   return res.json(new ApiResponse(200, {}, "Sop Video deleted successfully"));
 });
-
-
 
 module.exports = {
   generateSOPVideo,

@@ -8,20 +8,18 @@ const { ApiError } = require("../utils/ApiError");
  
 const upsertFileService = async ({ file, businessId, index, uuid }) => {
   try {
-    // 1. Parsing Text from doc
+
     const ast = await officeParser.parseOffice(file.path);
     const cleanText = ast.toText();
  
-    // 2. Define the Splitter
+
     const splitter = new RecursiveCharacterTextSplitter({
       chunkSize: 200,
       chunkOverlap: 20,
     });
  
-    // 3. Split the text you just got from pdfData
     const chunks = await splitter.splitText(cleanText);
- 
-    // 4. Generate Embeddings with Ollama
+
     const records = await Promise.all(
       chunks.map(async (chunk, i) => {
         const response = await ollama.embed({
@@ -31,7 +29,7 @@ const upsertFileService = async ({ file, businessId, index, uuid }) => {
  
         return {
           id: `${uuid}-${i}`,
-          values: response.embeddings[0], // This is the vector [0.1, 0.2, ...]
+          values: response.embeddings[0], 
           metadata: {
             chunk_text: chunk,
             filename: String(file.originalname),
@@ -42,7 +40,7 @@ const upsertFileService = async ({ file, businessId, index, uuid }) => {
       }),
     );
  
-    // 5. Upsert to Pinecone
+    
     await index.namespace(String(businessId)).upsert({ records });
  
     console.log("File Upserted to Pinecone DB");

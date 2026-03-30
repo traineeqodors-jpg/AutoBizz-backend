@@ -155,7 +155,7 @@ const editOrg = asyncHandler(async (req, res) => {
     phoneNumber,
   } = req.body;
 
-  // 1. Prepare Update Data
+  
   const updateData = {
     firstName,
     lastName,
@@ -168,11 +168,10 @@ const editOrg = asyncHandler(async (req, res) => {
 
  
 
-  // 3. Handle Profile Image Upload & Cleanup
   if (req.file) {
-    // If an old image exists, delete it from the 'public' folder
+   
     if (org.profileImage) {
-      // Remove the leading slash if it exists to avoid root path issues
+     
       const relativePath = org.profileImage.startsWith('/') 
         ? org.profileImage.slice(1) 
         : org.profileImage;
@@ -182,12 +181,12 @@ const editOrg = asyncHandler(async (req, res) => {
       try {
         await fs.unlink(oldPath);
       } catch (err) {
-        // Log if file doesn't exist, but don't stop the update
+        
         console.error("Old profile image not found on disk:", oldPath);
       }
     }
 
-    // Save the new path
+    
     updateData.profileImage = `/public/${req.file.filename}`;
   }
 
