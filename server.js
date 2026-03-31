@@ -30,7 +30,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      "http://localhost:5173", 
+      process.env.FRONTEND_URL, 
       "http://192.168.0.37:5173",
      "https://9w7lghq0-5173.inc1.devtunnels.ms" 
     ],
@@ -40,7 +40,7 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://192.168.0.37:5173" , "https://9w7lghq0-5173.inc1.devtunnels.ms"],
+    origin: [ process.env.FRONTEND_URL, "http://192.168.0.37:5173" , "https://9w7lghq0-5173.inc1.devtunnels.ms"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -110,7 +110,7 @@ const startServer = async () => {
     const index = await initPinecone();
     app.locals.pineconeIndex = index;
  
-    server.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, () => {
       console.log(`Server is running at :${PORT}`);
     });
   } catch (error) {
