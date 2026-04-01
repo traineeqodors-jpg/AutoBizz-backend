@@ -151,14 +151,13 @@ const addLeadForm = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Request Body is Empty");
   }
 
-  const { name, email, subject, phone, message, company , orgId} = req.body;
+  const { name, email, subject, phone, message, company, orgId } = req.body;
 
- console.log(req.body)
+  console.log(req.body);
   if (!name || !email || !subject || !phone || !message || !orgId) {
     throw new ApiError(400, "All fields are mandatory");
   }
 
-  
   let lead = await Lead.findOne({ where: { email, orgId } });
 
   const newMessageEntry = {
@@ -168,25 +167,27 @@ const addLeadForm = asyncHandler(async (req, res) => {
   };
 
   if (lead) {
-    const updatedMetadata = Array.isArray(lead.metadata?.history) 
-      ? [...lead.metadata.history, newMessageEntry] 
+    const updatedMetadata = Array.isArray(lead.metadata?.history)
+      ? [...lead.metadata.history, newMessageEntry]
       : [newMessageEntry];
 
-    const newScore = Math.min((lead.confidence_score || 0) + 15, 100); 
+    const newScore = Math.min((lead.confidence_score || 0) + 15, 100);
 
-    await lead.update({
-      name, 
-      phone,
-      confidence_score: newScore,
-      metadata: { history: updatedMetadata }
-    }, { 
-      individualHooks: true 
-    });
+    await lead.update(
+      {
+        name,
+        phone,
+        confidence_score: newScore,
+        metadata: { history: updatedMetadata },
+      },
+      {
+        individualHooks: true,
+      },
+    );
 
     return res
       .status(200)
       .json(new ApiResponse(200, lead, "We will back to you soon again"));
-
   } else {
     // 4. CREATE NEW LEAD
     const newLead = await Lead.create({
@@ -198,12 +199,18 @@ const addLeadForm = asyncHandler(async (req, res) => {
       status: "new",
       confidence_score: 20,
       metadata: { history: [newMessageEntry] },
-      meeting_scheduled: false
+      meeting_scheduled: false,
     });
 
     return res
       .status(201)
-      .json(new ApiResponse(201, newLead, "Thank You for filling the form ,we will contact you soon"));
+      .json(
+        new ApiResponse(
+          201,
+          newLead,
+          "Thank You for filling the form ,we will contact you soon",
+        ),
+      );
   }
 });
 
@@ -371,11 +378,11 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
       // Update CallLog status/duration
       await db.CallLog.update(
-        { 
-          status: CallStatus, 
-          duration: CallDuration ? parseInt(CallDuration) : 0 
+        {
+          status: CallStatus,
+          duration: CallDuration ? parseInt(CallDuration) : 0,
         },
-        { where: { callSid: CallSid } }
+        { where: { callSid: CallSid } },
       );
 
       // Fetch logs for transcript
@@ -390,33 +397,29 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
       // AI Scoring (The slow part)
       const scoringResult = await calculateLeadScore(transcript);
-      
+
       let leadScore = Number(scoringResult?.score);
       if (isNaN(leadScore)) leadScore = 10;
       leadScore = Math.round(leadScore);
 
       // Update Lead Table
       await db.Lead.update(
-        { 
-          confidence_score: leadScore, 
-          status: leadScore > 70 ? 'qualified' : 'nurture' 
+        {
+          confidence_score: leadScore,
+          status: leadScore > 70 ? "qualified" : "nurture",
         },
-        { where: { id: leadId },
-        individualHooks: true  },
-        
+        { where: { id: leadId }, individualHooks: true },
       );
-
-
 
       // Notify Frontend via Socket
       const io = req.app.get("io");
       io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
 
-      console.log(`✅ Background Scoring Complete: ${leadScore}`);
+      console.log(`Background Scoring Complete: ${leadScore}`);
     } catch (error) {
-      console.error("❌ Background Scoring Failed:", error.message);
+      console.error("Background Scoring Failed:", error.message);
     }
-  })(); 
+  })();
 });
 
 module.exports = {
@@ -425,5 +428,5 @@ module.exports = {
   deleteLead,
   startQualificationBatch,
   finalizeCallAndScore,
-  addLeadForm
+  addLeadForm,
 };

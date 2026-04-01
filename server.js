@@ -31,7 +31,7 @@ const io = new Server(server, {
     origin: [
       "http://localhost:5173", // Local dev
       "http://192.168.0.35:5173",
-      "https://9w7lghq0-5173.inc1.devtunnels.ms", // Your local IP for other PCs
+      "https://9xx87l5m-3000.inc1.devtunnels.ms", // Your local IP for other PCs
     ],
     credentials: true,
   }, // Your React URL
@@ -42,7 +42,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://192.168.0.35:5173",
-      "https://9w7lghq0-5173.inc1.devtunnels.ms",
+      "https://9xx87l5m-3000.inc1.devtunnels.ms",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

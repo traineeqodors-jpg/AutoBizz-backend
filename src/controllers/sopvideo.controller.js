@@ -130,8 +130,6 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
         },
       ],
       dimension: { width: 1280, height: 720 },
-      callback_url: process.env.BASE_URL, // Your public HTTPS endpoint
-      callback_id: `${orgId}_sop_video`, // (Optional) A custom string to identify this job in your DB
     },
     {
       headers: {
