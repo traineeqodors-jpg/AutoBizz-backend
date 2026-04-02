@@ -27,13 +27,16 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   }
 
   const uuid = crypto.randomUUID();
- console.log(uuid)
-  //AWS S3 Logic for generating url
+  console.log(uuid);
+
+  const docUrl = "/" + path.posix.join("public", req.file?.filename);
+
+  console.log(docUrl);
 
   // 2. Generating docRecord to store
   const documentRecord = {
-    docType: req.file?.mimetype, // e.g. 'application/pdf' or 'image/png'
-    docUrl: `/public/${req.file?.filename}`, // Path saved in DB
+    docType: req.file?.mimetype,
+    docUrl,
     orgId: parseInt(orgId),
     pineconeId: uuid,
   };
@@ -45,9 +48,9 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Error in Saving Document");
   }
 
-   console.log(uuid)
+  console.log(uuid);
 
-  upsertFileService({ file: req.file, businessId: orgId, index, uuid });
+  await upsertFileService({ file: req.file, businessId: orgId, index, uuid });
 
   res.json(new ApiResponse(201, savedDoc, `saved successfully.`));
 });
@@ -66,7 +69,7 @@ const getMyDocuments = asyncHandler(async (req, res) => {
   const documents = await Document.findAll({
     where: { orgId: organizationId },
     order: [["createdAt", "DESC"]], // Show newest first
-    attributes: ["id", "docType", "pineconeId" ,"docUrl", "createdAt"], // Security: don't return orgId if not needed
+    attributes: ["id", "docType", "pineconeId", "docUrl", "createdAt"], // Security: don't return orgId if not needed
   });
 
   if (!documents) {
@@ -80,26 +83,26 @@ const getMyDocuments = asyncHandler(async (req, res) => {
 const deleteDocument = asyncHandler(async (req, res) => {
   const organizationId = req.organization?.id;
   const { id } = req.params;
- 
+
   const index = req.app.locals.pineconeIndex;
- 
+
   if (!organizationId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
- 
+
   const document = await Document.findOne({
     where: { id, orgId: organizationId },
   });
- 
+
   console.log(document.pineconeId);
- 
+
   if (!document) {
     throw new ApiError(404, "Document not found or access denied");
   }
- 
+
   const fileName = path.basename(document.docUrl);
-  const filePath = path.join(__dirname, "../../public", fileName);
- 
+  const filePath = path.join(process.cwd(), "public", fileName);
+
   try {
     await fs.unlink(filePath);
     await index.namespace(String(organizationId)).deleteMany({
@@ -113,9 +116,9 @@ const deleteDocument = asyncHandler(async (req, res) => {
       err.message,
     );
   }
- 
+
   await document.destroy();
- 
+
   res.json(new ApiResponse(200, null, "Document deleted successfully"));
 });
 
