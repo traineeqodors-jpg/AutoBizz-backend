@@ -3,6 +3,7 @@ const { Model } = require("sequelize");
 const {
   addCalendarEvent,
 } = require("../../src/services/googleCalender.services");
+const { generateLeadToken, sendInterestEmail } = require("../../src/services/emailServices");
 module.exports = (sequelize, DataTypes) => {
   class Lead extends Model {
     /**
@@ -46,11 +47,10 @@ module.exports = (sequelize, DataTypes) => {
         afterBulkUpdate: (options) => {
           options.individualHooks = true;
         },
-        afterUpdate: async (lead, options) => {
+        afterUpdate: async (lead , options) => {
           if (lead.confidence_score >= 80 && !lead.meeting_scheduled) {
             try {
               const Organization = lead.sequelize.models.Organization;
-              const Meeting = lead.sequelize.models.Meeting; // Access the new Meeting model
 
               const org = await Organization.findByPk(lead.orgId);
 
@@ -58,47 +58,15 @@ module.exports = (sequelize, DataTypes) => {
                 return;
               }
 
+              const token = generateLeadToken(lead.id);
 
-              const startTime = new Date();
-              startTime.setDate(startTime.getDate() + 1);
-              const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+              console.log("Sending Mail")
 
-              const eventDetails = {
-                title: `Discovery Call: ${lead.name} (${lead.company || "New Lead"})`,
-                description: `Automated meeting for high-intent lead. Score: ${lead.confidence_score}`,
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString(),
-              };
-
-            
-              const calendarData = await addCalendarEvent(
-                org.googleRefreshToken,
-                eventDetails,
-              );
-
-           
-              await Meeting.create(
-                {
-                  googleEventId: calendarData.id,
-                  title: eventDetails.title,
-                  description: eventDetails.description,
-                  startTime: startTime,
-                  endTime: endTime,
-                  meetLink: calendarData.hangoutLink || calendarData.htmlLink, 
-                  orgId: lead.orgId,
-                  leadId: lead.id,
-                },
-                { transaction: options.transaction },
-              );
-
-             
-              await lead.update(
-                { meeting_scheduled: true },
-                { hooks: false, transaction: options.transaction },
-              );
-
-              console.log(
-                `Meeting stored in DB & Created in Google: ${calendarData.htmlLink}`,
+              await sendInterestEmail(
+                lead.email,
+                token,
+                org.businessName,
+                org.email,
               );
             } catch (error) {
               console.error("Hook Automation Error:", error.message);

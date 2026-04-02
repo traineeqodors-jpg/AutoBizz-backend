@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { Op } = require("sequelize");
 const { comparePassword } = require("../utils/authHelper");
+const { sendReserPasswordLink } = require("../services/emailServices");
 const PasswordReset = db.PasswordReset;
 const Organization = db.Organization;
 
@@ -31,22 +32,9 @@ const forgotPassword = asyncHandler(async (req, res) => {
     expiresIn,
   });
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
 
-  const resetUrl = `${process.env.BASE_URL}/resetpassword/${token}`;
-  await transporter.sendMail({
-    to: email,
-    subject: "Password Reset Request",
-    html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. Valid for 1 hour.</p>`,
-  });
+
+   await sendReserPasswordLink(token)
 
   res
     .status(200)

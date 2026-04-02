@@ -6,7 +6,7 @@ const { validateLeadsQuery } = require("../middlewares/vailidation.middleware");
 const router = express.Router();
  
 router.post("/", verifyJWT, uploadCsv.single("file"), addLead);
-router.post("/form" , addLeadForm)
+
 router.get("/", verifyJWT, validateLeadsQuery,  getAllLeads);
 router.delete("/:id" , verifyJWT , deleteLead)
 

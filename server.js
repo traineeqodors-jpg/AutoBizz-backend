@@ -32,7 +32,8 @@ const io = new Server(server, {
     origin: [
       process.env.FRONTEND_URL, 
       "http://192.168.0.37:5173",
-     "https://9w7lghq0-5173.inc1.devtunnels.ms" 
+     "https://9w7lghq0-3000.inc1.devtunnels.ms" ,
+     "http://localhost:5173"
     ],
     credentials: true,
   }, // Your React URL
@@ -40,7 +41,7 @@ const io = new Server(server, {
 
 app.use(
   cors({
-    origin: [ process.env.FRONTEND_URL, "http://192.168.0.37:5173" , "https://9w7lghq0-5173.inc1.devtunnels.ms"],
+    origin: [process.env.FRONTEND_URL, "http://192.168.0.37:5173" , "https://9w7lghq0-5173.inc1.devtunnels.ms" , "https://9w7lghq0-3000.inc1.devtunnels.ms" ,   "http://localhost:5173"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -110,7 +111,7 @@ const startServer = async () => {
     const index = await initPinecone();
     app.locals.pineconeIndex = index;
  
-    server.listen(PORT, () => {
+    server.listen(PORT,() => {
       console.log(`Server is running at :${PORT}`);
     });
   } catch (error) {

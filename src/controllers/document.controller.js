@@ -26,7 +26,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   }
 
   const uuid = crypto.randomUUID();
- console.log(uuid)
+
   //AWS S3 Logic for generating url
 
 

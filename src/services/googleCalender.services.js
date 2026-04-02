@@ -42,6 +42,26 @@ const addCalendarEvent = async (refreshToken, eventDetails) => {
     throw error;
   }
 };
+
+const deleteCalendarEvent = async (refreshToken, eventId) => {
+  
+
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+  try {
+    await calendar.events.delete({
+      calendarId: 'primary',
+      eventId: eventId,
+    });
+    return true;
+  } catch (error) {
+   
+    console.error("Google Calendar Deletion Error:", error.message);
+    return false;
+  }
+};
  
-module.exports = { oauth2Client, addCalendarEvent };
+module.exports = { oauth2Client, addCalendarEvent , deleteCalendarEvent };
  

@@ -10,6 +10,7 @@ const {
   editOrg,
   me,
   handleGoogleToken,
+  queryForm,
 } = require("../controllers/org.controller.js");
 const {validate} = require("../middlewares/vailidation.middleware.js");
 const registerSchema = require("../zodSchema/registerSchema.js");
@@ -29,6 +30,8 @@ router.get("/orgDetails", verifyJWT, getCurrentOrgDetails);
 router.post("/googleToken", verifyJWT, handleGoogleToken);
 
 router.get("/me", verifyJWT , me)
+
+router.post("/queryForm" , queryForm);
  
 
 

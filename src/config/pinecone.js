@@ -4,7 +4,7 @@ const pc = new Pinecone({
   apiKey: process.env.PINECONE_KEY,
 });
  
-async function initPinecone(businessName) {
+async function initPinecone() {
  
  
   const indexName = "business-vault";
@@ -28,7 +28,7 @@ async function initPinecone(businessName) {
     }
     return pc.index(indexName);
   } catch (error) {
-    console.error(`Error accessing index for ${businessId}:`, error);
+    console.error(`Error accessing index`, error);
     throw error;
   }
 }

@@ -10,7 +10,7 @@ const csv = require("csv-parser");
 const { Op } = require("sequelize");
 
 const twilio = require("twilio");
-const { calculateLeadScore } = require("../services/leadScoring.services");
+const { calculateLeadScore } = require("../services/rag.services");
 const { default: axios } = require("axios");
 
 const client = twilio(
@@ -20,6 +20,7 @@ const client = twilio(
 const BASE_URL = process.env.BASE_URL;
 
 const Lead = db.Lead;
+
 
 const addLead = asyncHandler(async (req, res) => {
   if (!req.file || !req.file.originalname.toLowerCase().endsWith(".csv")) {
@@ -144,75 +145,7 @@ const addLead = asyncHandler(async (req, res) => {
     );
 });
 
-const addLeadForm = asyncHandler(async (req, res) => {
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
 
-  const { name, email, subject, phone, message, company, orgId } = req.body;
-
-  if (!name || !email || !subject || !phone || !message || !orgId) {
-    throw new ApiError(400, "All fields are mandatory");
-  }
-
-  let lead = await Lead.findOne({ where: { email, orgId } });
-
-  const newMessageEntry = {
-    subject,
-    message,
-    timestamp: new Date().toISOString(),
-  };
-
-  if (lead) {
-    const updatedMetadata = Array.isArray(lead.metadata?.history)
-      ? [...lead.metadata.history, newMessageEntry]
-      : [newMessageEntry];
-
-    const newScore = Math.min((lead.confidence_score || 0) + 15, 100);
-
-    await lead.update(
-      {
-        name,
-        phone,
-        confidence_score: newScore,
-        metadata: { history: updatedMetadata },
-      },
-      {
-        individualHooks: true,
-      },
-    );
-
-    return res
-      .status(200)
-      .json(new ApiResponse(200, lead, "We will back to you soon again"));
-  } else {
-    const newLead = await Lead.create({
-      orgId,
-      name,
-      email,
-      phone,
-      company: company || "N/A",
-      status: "new",
-      confidence_score: 20,
-      metadata: { history: [newMessageEntry] },
-      meeting_scheduled: false,
-    });
-
-    if (!newLead) {
-      throw new ApiError(400, "Cannot create new Lead");
-    }
-
-    return res
-      .status(201)
-      .json(
-        new ApiResponse(
-          201,
-          newLead,
-          "Thank You for filling the form ,we will contact you soon",
-        ),
-      );
-  }
-});
 
 const getAllLeads = asyncHandler(async (req, res) => {
   const {
@@ -320,6 +253,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
 
   const { leadIds, orgId } = req.body;
   const io = req.app.get("io");
+  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
 
   const leads = await db.Lead.findAll({ where: { id: leadIds } });
 
@@ -328,13 +262,30 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
   for (let i = 0; i < leads.length; i++) {
     const lead = leads[i];
 
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    if (!lead.phone || !phoneRegex.test(lead.phone.replace(/\s/g, ""))) {
+      console.error(`Skipping ${lead.name}: Malformed number ${lead.phone}`);
+      io.emit(`batch-update-${orgId}`, {
+        message: `Skipping ${lead.name}: Invalid format`,
+        status: "error",
+      });
+      continue;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 6000));
 
     try {
+      const lookup = await client.lookups.v2.phoneNumbers(lead.phone).fetch();
+
+      if (!lookup.valid) {
+        throw new Error(
+          "Number is technically valid but not reachable/active.",
+        );
+      }
+
       await client.calls.create({
         to: lead.phone,
         from: process.env.TWILIO_PHONE_NUMBER,
-        url: `${process.env.BASE_URL}/api/voice?orgId=${orgId}&leadId=${lead.id}`,
+        url: `${BASE_URL}/api/voice?orgId=${orgId}&leadId=${lead.id}`,
         method: "POST",
         statusCallback: `${BASE_URL}/api/voice/callback?orgId=${orgId}&leadId=${lead.id}`,
         statusCallbackEvent: ["completed"],
@@ -342,7 +293,21 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
 
       console.log("Working of calls");
     } catch (err) {
-      console.error(`Twilio Error for ${lead.name}:`, err.message);
+      let errorMessage = err.message;
+      if (err.code === 21211)
+        errorMessage = "Invalid 'To' Phone Number (Twilio Check).";
+      if (err.code === 21614)
+        errorMessage = "To number is not a valid mobile/landline.";
+      if (err.code === 21408)
+        errorMessage =
+          "Permission denied for this country (check Geo-Permissions).";
+
+      console.error(`Twilio Error [${lead.name}]:`, errorMessage);
+
+      io.emit(`batch-update-${orgId}`, {
+        message: `Error calling ${lead.name}: ${errorMessage}`,
+        status: "error",
+      });
     } finally {
       io.emit(`batch-update-${orgId}`, {
         message: `Calling ${lead.name}...`,
@@ -367,7 +332,7 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
   (async () => {
     try {
-      console.log(`Background Scoring Started for Lead: ${leadId}`);
+      
 
       await db.CallLog.update(
         {
@@ -407,7 +372,7 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
       const io = req.app.get("io");
       io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
 
-      console.log(`Background Scoring Complete: ${leadScore}`);
+     
     } catch (error) {
       console.error(" Background Scoring Failed:", error.message);
     }
@@ -420,5 +385,5 @@ module.exports = {
   deleteLead,
   startQualificationBatch,
   finalizeCallAndScore,
-  addLeadForm,
+  
 };

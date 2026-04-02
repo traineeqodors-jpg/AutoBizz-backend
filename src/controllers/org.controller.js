@@ -1,4 +1,5 @@
 "use strict";
+const Api = require("twilio/lib/rest/Api");
 const db = require("../../db/models");
 const { oauth2Client } = require("../services/googleCalender.services");
 const { ApiError } = require("../utils/ApiError");
@@ -6,7 +7,8 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { comparePassword } = require("../utils/authHelper");
 const jwt = require("jsonwebtoken");
-const path = require('path')
+const path = require('path');
+const { sendQueryMail } = require("../services/emailServices");
 
 
 const Organization = db.Organization;
@@ -44,11 +46,13 @@ const generateAccessToken = async (id) => {
   }
 };
 
+// Register Org
 const registerOrg = asyncHandler(async (req, res) => {
+  // Req.body Validation
   if (!req.body || Object.keys(req.body).length === 0) {
     throw new ApiError(400, "Request Body is Empty");
   }
-
+ 
   const {
     firstName,
     lastName,
@@ -59,13 +63,15 @@ const registerOrg = asyncHandler(async (req, res) => {
     phone,
     password,
   } = req.body;
-
+ 
+  // Check if Email already Exists
   const userExists = await Organization.findOne({ where: { email } });
-
+ 
   if (userExists) {
     throw new ApiError(400, "User Already Exists");
   }
-
+ 
+  // Inserting Org Data in DB
   const data = await Organization.create({
     firstName,
     lastName,
@@ -76,62 +82,97 @@ const registerOrg = asyncHandler(async (req, res) => {
     businessSize: orgSize,
     phoneNumber: phone,
   });
-
+ 
   if (!data) {
-    throw new ApiError(400, "Cant Create Org");
+    throw new ApiError(400, "Failed to Register");
   }
-
-  res
-    .status(201)
+ 
+  // Generating Access and Refresh Token
+  const { accessToken, refreshToken } = await generateAccessRefreshToken(
+    data.id,
+  );
+ 
+  const options = {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  };
+ 
+  return res
+    .cookie("accessToken", accessToken, {
+      ...options,
+      maxAge: 60 * 1000 * 60 * 24,
+    })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
     .json(new ApiResponse(201, data, "Org registered Successfully"));
 });
+ 
 
+// Login Org
 const orgLogin = asyncHandler(async (req, res, next) => {
-  const { email, password } = req.body;
 
+   if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
+  const { email, password } = req.body;
+ 
+  // Validation for Empty Data
   if (!email || !password) {
     throw new ApiError(400, "Email or password is missing!");
   }
-
+ 
+  // Check if email is Valid
   const org = await Organization.findOne({
     where: {
       email: email,
     },
   });
-
+ 
   if (!org) {
     throw new ApiError(404, "Email not registered!");
   }
-
+ 
+  // Checking if password is correct
   const isPasswordValid = await comparePassword(password, org.password);
-
+ 
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid email or Password!");
   }
-
+ 
+  // Generating Access and Refresh Token
   const { accessToken, refreshToken } = await generateAccessRefreshToken(
     org.id,
   );
-
+ 
   const loggedInUser = org.toJSON();
   delete loggedInUser.password;
   delete loggedInUser.refreshToken;
-
+ 
   const options = {
     httpOnly: true,
     secure: false,
-     maxAge: 7 * 24 * 60 * 60 * 1000,
-     sameSite : "lax",
-     path  : "/"
+    sameSite: "lax",
+    path: "/",
   };
-
+ 
   return res
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, {
+      ...options,
+      maxAge: 60 * 1000 * 60 * 24,
+    })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
     .json(
       new ApiResponse(
         200,
-        {loggedInUser,accessToken},
+        { loggedInUser, accessToken },
         "Organization logged in successfully!",
       ),
     );
@@ -341,6 +382,32 @@ const me = asyncHandler(async (req,res) => {
   return res.json(new ApiResponse(200 , req.organization , "Organizaion Details"))
 })
 
+const queryForm = asyncHandler(async(req,res) => {
+
+   if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
+  const { name , email , subject , message , phone} = req.body
+
+  if(!name || !email || !subject || !message || !phone){
+    throw new ApiError(400 , "Fields are missing")
+  } 
+
+  const to = "trainee.qodors@gmail.com"
+
+  const response = await sendQueryMail(to, { name, email, subject, message, phone });
+  if(!response){
+    throw new ApiError(400 , "Error in SendingMail")
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, response, "Query submitted and email sent successfully")
+  );
+
+
+})
+
 module.exports = {
   registerOrg,
   getAllOrgs,
@@ -350,5 +417,6 @@ module.exports = {
   getCurrentOrgDetails,
   editOrg,
   me,
-  handleGoogleToken
+  handleGoogleToken,
+  queryForm
 };

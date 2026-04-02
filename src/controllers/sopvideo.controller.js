@@ -90,16 +90,22 @@ const prepareScript = asyncHandler(async (req, res) => {
 
   const contextText = contextChunks.join("\n\n---\n\n");
 
-  const chatResponse = await ollama.chat({
-    model: promptConfig.model,
-    messages: [
-      { role: "system", content: promptConfig.system_prompt },
-      {
-        role: "user",
-        content: `Technical Documentation Context:\n${contextText}`,
-      },
-    ],
-  });
+  let chatResponse;
+  try {
+    chatResponse = await ollama.chat({
+      model: promptConfig.model,
+      messages: [
+        { role: "system", content: promptConfig.system_prompt },
+        {
+          role: "user",
+          content: `Technical Documentation Context:\n${contextText}`,
+        },
+      ],
+    });
+    
+  } catch (error) {
+    console.log(error)
+  }
 
   const finalScript = chatResponse?.message?.content;
   res.json(new ApiResponse(200, finalScript, "Final Script!"));
@@ -121,7 +127,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
   const data = await Sop.create(newSop);
 
   const response = await axios.post(
-    "https://api.heygen.com/v2/video/generate", // Updated Endpoint
+    "https://api.heygen.com/v2/video/generate", 
     {
       video_inputs: [
      

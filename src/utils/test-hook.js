@@ -6,7 +6,7 @@ const Lead = db.Lead
 async function testHook() {
   try {
    
-    const leadId = 1352; 
+    const leadId = 1980; 
     const lead = await Lead.findByPk(leadId);
     
     if (!lead) return console.log("Lead not found in database.");
