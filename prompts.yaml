@@ -1,6 +1,6 @@
 
 sop_scriptwriter:
-  model: "llama3"
+  model: "deepseek-v3.2:cloud"
   options:
     temperature: 0.3
   system_prompt:  |

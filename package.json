@@ -5,8 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node --env-file=.env --watch server.js",
-    "start": "nodemon server.js"
+    "dev": "node --env-file=.env --watch server.js"
   },
   "keywords": [],
   "author": "",
@@ -40,7 +39,6 @@
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.5",
-    "socket-io": "^1.0.0",
     "socket.io": "^4.8.3",
     "twilio": "^5.13.0",
     "uuid": "^13.0.0",

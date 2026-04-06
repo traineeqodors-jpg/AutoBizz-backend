@@ -1,4 +1,3 @@
-require("dotenv").config();
 const express = require("express");
 const orgRouter = require("./src/routes/org.routes.js");
 const errorHandler = require("./src/middlewares/error.middleware.js");
@@ -6,7 +5,6 @@ const cors = require("cors");
 const app = express();
 const cookieParser = require("cookie-parser");
 const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
-const tenantRouter = require("./src/routes/tenant.routes.js");
 const documentRouter = require("./src/routes/document.routes.js");
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js");
 const callLogRouter = require("./src/routes/callLog.routes.js");
@@ -82,7 +80,6 @@ app.get("/", (req, res) => {
 
 app.use("/api/org", orgRouter);
 app.use("/api/password", passwordResetRouter);
-app.use("/api/tenant", tenantRouter);
 app.use("/api/document", documentRouter);
 app.use("/api/orgDetails", orgDetailsRouter);
 app.use("/api/voice", voiceRouter);
