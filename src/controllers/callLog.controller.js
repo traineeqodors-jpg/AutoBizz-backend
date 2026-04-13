@@ -23,7 +23,7 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
   } = req.query;
 
   const offset = (page - 1) * limit;
-  const orgId = req.organization?.id; 
+  const orgId = req.organization?.id || req.employee?.orgId 
 
  
   const validSortColumns = ["createdAt", "duration", "status", "callSid", "to", "from"];
@@ -106,7 +106,7 @@ const deleteCallLog = asyncHandler(async (req,res) => {
 
     const callLog = await CallLog.findOne({
         where : {
-            id , orgId : req.organization?.id
+            id , orgId : req.organization?.id || req.employee?.orgId 
         }
     })
 

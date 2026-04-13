@@ -1,12 +1,12 @@
 const express = require('express');
 const { generateSOPVideo, getAllVideos, deleteVideo, testDownload } = require('../controllers/sopvideo.controller');
-const { verifyJWT } = require('../middlewares/auth.middleware');
+const { verifyJWT, allowOwnerOrEmployee, authorizeRoles } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
 
-router.route("/generateSOP").post(verifyJWT, generateSOPVideo);
-router.route("/getAllSopVideos").get(verifyJWT, getAllVideos);
+router.route("/generateSOP").post(verifyJWT("organization"), generateSOPVideo);
+router.route("/getAllSopVideos").get(allowOwnerOrEmployee, authorizeRoles("sales", "employee"),  getAllVideos);
 router.route("/dowloadVideo").post(testDownload);
-router.route("/:videoId").delete(verifyJWT, deleteVideo);
+router.route("/:videoId").delete(verifyJWT("organization"), deleteVideo);
 
 module.exports = router

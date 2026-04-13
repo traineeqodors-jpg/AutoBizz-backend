@@ -3,8 +3,8 @@ const { verifyJWT } = require('../middlewares/auth.middleware');
 const { getOrganizationDetails, addOrganizationDetails, editOrganizationDetails } = require('../controllers/orgDetails.controller');
 const router = express.Router();
 
-router.get("/" , verifyJWT , getOrganizationDetails)
-router.post("/" ,verifyJWT , addOrganizationDetails)
-router.put("/" , verifyJWT , editOrganizationDetails)
+router.get("/"  , getOrganizationDetails)
+router.post("/" ,verifyJWT("organization") , addOrganizationDetails)
+router.put("/" , verifyJWT("organization") , editOrganizationDetails)
 
 module.exports = router;

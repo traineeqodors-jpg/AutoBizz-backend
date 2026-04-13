@@ -170,7 +170,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const businessId = req?.organization?.id;
+  const businessId = req?.organization?.id || req.employee?.orgId;
 
   if (!businessId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
