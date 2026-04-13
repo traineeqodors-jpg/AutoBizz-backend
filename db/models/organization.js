@@ -27,12 +27,12 @@ module.exports = (sequelize, DataTypes) => {
         as: "details",
       });
 
-       Organization.hasMany(models.CallLog, {
+      Organization.hasMany(models.CallLog, {
         foreignKey: "orgId",
         as: "callLogs",
       });
 
-       Organization.hasMany(models.Sop, {
+      Organization.hasMany(models.Sop, {
         foreignKey: "orgId",
         as: "sop",
       });
@@ -41,14 +41,11 @@ module.exports = (sequelize, DataTypes) => {
         as: "lead",
       });
 
-       Organization.hasMany(models.Meeting, {
-    foreignKey: "orgId",
-    as: "meetings",
-    onDelete: "CASCADE"
-  });
-
-
-
+      Organization.hasMany(models.Meeting, {
+        foreignKey: "orgId",
+        as: "meetings",
+        onDelete: "CASCADE",
+      });
     }
 
     async validPassword(password) {
@@ -136,7 +133,7 @@ module.exports = (sequelize, DataTypes) => {
       refreshToken: DataTypes.TEXT,
       role: {
         type: DataTypes.ENUM("admin", "owner", "user"),
-        defaultValue: "user",
+        defaultValue: "owner",
         allowNull: false,
         validate: {
           isIn: {

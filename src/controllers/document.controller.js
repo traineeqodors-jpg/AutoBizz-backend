@@ -46,7 +46,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 
    console.log(uuid)
 
-  upsertFileService({ file: req.file, businessId: orgId, index, uuid });
+  await upsertFileService({ file: req.file, businessId: orgId, index, uuid });
 
   res.json(new ApiResponse(201, savedDoc, `saved successfully.`));
 });
