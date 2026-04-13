@@ -111,7 +111,7 @@ const deleteCallLog = asyncHandler(async (req,res) => {
     })
 
     if(!callLog){
-        throw new ApiError(400 , "Call log not found or corupted")
+        throw new ApiError(400 , "Call log not found or corrupted")
     }
 
     await callLog.destroy();
