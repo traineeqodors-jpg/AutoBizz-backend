@@ -174,10 +174,61 @@ const sendQueryMail = async (to, data) => {
   return await transporter.sendMail(mailOptions);
 };
 
+
+const sendInvitationEmail = async (email, firstName, setupUrl) => {
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            .container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; }
+            .header { background-color: #4F46E5; padding: 40px 20px; text-align: center; color: white; }
+            .content { padding: 40px 30px; line-height: 1.6; color: #374151; }
+            .button-wrapper { text-align: center; margin: 30px 0; }
+            .button { background-color: #4F46E5; color: white !important; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; }
+            .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin:0;">Welcome to the Team!</h1>
+            </div>
+            <div class="content">
+                <p>Hello <strong>${firstName}</strong>,</p>
+                <p>An account has been created for you at our organization. We are excited to have you on board! To get started and access your dashboard, you need to secure your account by setting up a password.</p>
+                
+                <div class="button-wrapper">
+                    <a href="${setupUrl}" class="button">Set Up Your Password</a>
+                </div>
+
+                <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; font-size: 13px; color: #4F46E5;">${setupUrl}</p>
+                
+                <p>Regards,<br><strong>Operations Team</strong></p>
+            </div>
+            <div class="footer">
+                <p>This is an automated message. Please do not reply to this email.</p>
+                <p>&copy; ${new Date().getFullYear()} Your Business Name. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+
+  return await transporter.sendMail({
+    from: `"Admin Support" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Set up your account password",
+    html: htmlContent,
+  });
+};
+
 module.exports = {
   generateLeadToken,
   sendInterestEmail,
   sendMeetingConfirmationEmail,
   sendReserPasswordLink,
   sendQueryMail,
+  sendInvitationEmail
 };

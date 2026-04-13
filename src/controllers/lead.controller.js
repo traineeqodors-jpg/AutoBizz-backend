@@ -29,7 +29,7 @@ const addLead = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please upload a valid CSV file.");
   }
 
-  const businessId = req.organization.id;
+  const businessId = req.organization?.id || req.employee?.orgId;
   const filePath = req.file.path;
   const leads = [];
 
@@ -165,7 +165,9 @@ const getAllLeads = asyncHandler(async (req, res) => {
   } = req.query;
 
   const offset = (page - 1) * limit;
-  const businessId = req.organization.id;
+  console.log(req.organization, "req.organization")
+  console.log(req.employee, "req.employee")
+  const businessId = req.organization?.id || req.employee?.orgId;
 
   const validSortColumns = [
     "createdAt",

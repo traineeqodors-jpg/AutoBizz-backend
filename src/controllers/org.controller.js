@@ -362,10 +362,22 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Please choose your registered email`);
   }
  
-  if (tokens.refresh_token) {
+   if (tokens.refresh_token) {
+   
     await Organization.update(
       { googleRefreshToken: tokens.refresh_token },
-      { where: { id: orgId } },
+      { where: { id: orgId } }
+    );
+
+   
+    await db.Employee.update(
+      { googleRefreshToken: tokens.refresh_token },
+      { 
+        where: { 
+          orgId: orgId, 
+          role: 'sales' 
+        } 
+      }
     );
   }
  

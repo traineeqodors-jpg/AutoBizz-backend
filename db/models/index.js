@@ -18,6 +18,7 @@ db.CallLog = require("./calllog")(sequelize ,Sequelize.DataTypes )
 db.Sop = require("./sop")(sequelize ,Sequelize.DataTypes )
 db.Lead = require("./lead")(sequelize ,Sequelize.DataTypes )
 db.Meeting = require("./meeting")(sequelize ,Sequelize.DataTypes )
+db.Employee = require("./employee")(sequelize ,Sequelize.DataTypes )
 
 
 
