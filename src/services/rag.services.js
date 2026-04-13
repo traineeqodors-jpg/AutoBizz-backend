@@ -35,11 +35,11 @@ STRICT RULES:
 
 
  const response = await ollama.chat({
-    model: "tinyllama:1.1b",
+    model: "deepseek-v3.2:cloud",
     messages: [
       { role: "system", content: systemPrompt },
     
-      { role: "user", content: `Context: ${contexts}\n\nQuestion: ${query}\n\nConstraint: Answer in 10 words or less.` },
+      { role: "user", content: `Context: ${contexts}\n\nQuestion: ${query}\n\nConstraint: Answer in 15 words or less.` },
     ],
     
     options: {
@@ -93,7 +93,7 @@ Output rules:
   try {
 
     const response = await ollama.chat({
-      model: "llama3", 
+      model: "deepseek-v3.2:cloud", 
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Transcript:\n${transcript}` },

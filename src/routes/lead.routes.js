@@ -1,7 +1,7 @@
 const express = require("express");
 const { verifyJWT } = require("../middlewares/auth.middleware");
-const { addLead, getAllLeads, deleteLead, startQualificationBatch, finalizeCallAndScore, addLeadForm } = require("../controllers/lead.controller");
-const { uploads, uploadCsv } = require("../utils/multer");
+const { addLead, getAllLeads, deleteLead } = require("../controllers/lead.controller");
+const {  uploadCsv } = require("../utils/multer");
 const { validateLeadsQuery } = require("../middlewares/vailidation.middleware");
 const router = express.Router();
  

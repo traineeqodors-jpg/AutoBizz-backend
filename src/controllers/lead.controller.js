@@ -23,6 +23,7 @@ const Lead = db.Lead;
 
 
 const addLead = asyncHandler(async (req, res) => {
+  
   if (!req.file || !req.file.originalname.toLowerCase().endsWith(".csv")) {
     if (req.file) fs.unlinkSync(req.file.path);
     throw new ApiError(400, "Please upload a valid CSV file.");
@@ -69,12 +70,16 @@ const addLead = asyncHandler(async (req, res) => {
             rowHeaders.includes(h),
           );
           if (!hasAllHeaders) {
+           
             reject(
               new ApiError(
                 400,
                 `CSV Header mismatch. Required: ${requiredHeaders.join(", ")}`,
               ),
+              
             );
+          
+            fs.unlinkSync(filePath);
           }
           isFirstRow = false;
         }
@@ -101,7 +106,6 @@ const addLead = asyncHandler(async (req, res) => {
   });
 
   await parsePromise;
-
   fs.unlinkSync(filePath);
 
   if (leads.length === 0) throw new ApiError(400, "CSV is empty.");
@@ -126,7 +130,7 @@ const addLead = asyncHandler(async (req, res) => {
 
   axios
     .post(
-      `http://192.168.0.37:${process.env.PORT || 5000}/api/voice/batch-qualify`,
+      `http://localhost:${process.env.PORT || 5000}/api/voice/batch-qualify`,
       {
         leadIds,
         orgId: businessId,
@@ -255,6 +259,8 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
   const io = req.app.get("io");
   const phoneRegex = /^\+?[1-9]\d{1,14}$/;
 
+  const socketDelay = () => new Promise((resolve) => setTimeout(resolve, 2000));
+
   const leads = await db.Lead.findAll({ where: { id: leadIds } });
 
   res.json({ message: "Batch processing started" });
@@ -266,8 +272,9 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
       console.error(`Skipping ${lead.name}: Malformed number ${lead.phone}`);
       io.emit(`batch-update-${orgId}`, {
         message: `Skipping ${lead.name}: Invalid format`,
-        status: "error",
+        status: "warning",
       });
+       await socketDelay();
       continue;
     }
 
@@ -291,6 +298,14 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
         statusCallbackEvent: ["completed"],
       });
 
+      io.emit(`batch-update-${orgId}`, {
+        message: `Calling ${lead.name}...`,
+        current: i + 1,
+        total: leads.length,
+        status: "processing",
+      });
+      await socketDelay();
+
       console.log("Working of calls");
     } catch (err) {
       let errorMessage = err.message;
@@ -308,19 +323,13 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
         message: `Error calling ${lead.name}: ${errorMessage}`,
         status: "error",
       });
-    } finally {
-      io.emit(`batch-update-${orgId}`, {
-        message: `Calling ${lead.name}...`,
-        current: i + 1,
-        total: leads.length,
-        status: "processing",
-      });
+       await socketDelay();
     }
   }
 
   io.emit(`batch-update-${orgId}`, {
     message: "Batch qualification finished!",
-    status: "completed",
+    status: "success",
   });
 });
 
