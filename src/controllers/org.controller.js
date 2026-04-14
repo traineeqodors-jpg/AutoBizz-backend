@@ -389,10 +389,8 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
 });
 
  
-const me = asyncHandler(async (req,res) => {
-   
-  return res.json(new ApiResponse(200 , req.organization , "Organizaion Details"))
-})
+
+
 
 const queryForm = asyncHandler(async(req,res) => {
 
@@ -420,6 +418,7 @@ const queryForm = asyncHandler(async(req,res) => {
 
 })
 
+
 module.exports = {
   registerOrg,
   getAllOrgs,
@@ -428,7 +427,7 @@ module.exports = {
   orgLogout,
   getCurrentOrgDetails,
   editOrg,
-  me,
   handleGoogleToken,
-  queryForm
+  queryForm,
+  
 };

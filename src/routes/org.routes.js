@@ -8,7 +8,6 @@ const {
   refreshAccessToken,
   getCurrentOrgDetails,
   editOrg,
-  me,
   handleGoogleToken,
   queryForm,
 } = require("../controllers/org.controller.js");
@@ -27,7 +26,7 @@ router.post("/logout", verifyJWT("organization"), orgLogout);
 router.get("/orgDetails", verifyJWT("organization"), getCurrentOrgDetails);
 router.post("/googleToken", verifyJWT("organization"), handleGoogleToken);
 
-router.get("/me", verifyJWT , me)
+
 
 router.post("/queryForm" , queryForm);
  

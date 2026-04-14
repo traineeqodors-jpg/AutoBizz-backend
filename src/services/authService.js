@@ -9,7 +9,11 @@ const verifyJWT = (token, secret) => {
 const accesTokenVerification = async (accessToken, type) => {
   try {
     const decodedToken = verifyJWT(accessToken, process.env.ACCESS_TOKEN_SECRET);
-    
+
+   
+    if (decodedToken?.type !== type) {
+      throw new ApiError(403, `Unauthorized: Token is for ${decodedToken?.type}, but ${type} access is required.`);
+    }
 
     const Model = type === "employee" ? db.Employee : db.Organization;
 
@@ -22,6 +26,8 @@ const accesTokenVerification = async (accessToken, type) => {
 
     return user;
   } catch (error) {
+   
+    if (error instanceof ApiError) throw error;
     throw new ApiError(401, error?.message || "Token verification failed");
   }
 };
@@ -30,14 +36,15 @@ const refreshTokenVerfication = async (refreshToken, type, req, res) => {
   try {
     const decodedToken = verifyJWT(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-    if (!decodedToken) {
-      throw new ApiError(401, "Invalid or Expired Token");
+   
+    if (!decodedToken || decodedToken.type !== type) {
+      throw new ApiError(401, "Invalid or mismatched Refresh Token");
     }
 
     const Model = type === "employee" ? db.Employee : db.Organization;
-
     const user = await Model.findByPk(decodedToken?.id);
 
+    // Use specific database check for refresh token validity
     if (!user || user.refreshToken !== refreshToken) {
       throw new ApiError(401, `Invalid ${type} Refresh Token`);
     }
@@ -46,18 +53,19 @@ const refreshTokenVerfication = async (refreshToken, type, req, res) => {
 
     const options = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: false,
       sameSite: "None",
       path: "/",
     };
 
     res.cookie("accessToken", accessToken, {
       ...options,
-      maxAge: 60 * 1000 * 60 * 24,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
     return user;
   } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(401, "Session expired, please login again");
   }
 };

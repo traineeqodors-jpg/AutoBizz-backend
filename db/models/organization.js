@@ -174,6 +174,7 @@ module.exports = (sequelize, DataTypes) => {
         businessName: this.businessName,
         email: this.email,
         role: this.role,
+        type : "organization"
       },
       process.env.ACCESS_TOKEN_SECRET,
       {
@@ -186,6 +187,7 @@ module.exports = (sequelize, DataTypes) => {
     return jwt.sign(
       {
         id: this.id,
+        type : "organization"
       },
       process.env.REFRESH_TOKEN_SECRET,
       {

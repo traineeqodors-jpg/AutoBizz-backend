@@ -32,7 +32,8 @@ router.post(
  */
 router.get(
     "/", 
-    allowOwnerOrEmployee, 
+    allowOwnerOrEmployee,
+     authorizeRoles("sales"), 
     validateLeadsQuery, 
     getAllLeads
 );

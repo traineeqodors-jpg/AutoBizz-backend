@@ -9,7 +9,7 @@ const {
 const { verifyJWT } = require("../middlewares/auth.middleware");
 
 
-router.post("/create", verifyJWT , createEmployee);
+router.post("/create", verifyJWT("organization") , createEmployee);
 router.post("/setup-password", setupEmployeePassword);
 
 router.post("/login", loginEmployee);

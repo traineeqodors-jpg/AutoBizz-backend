@@ -93,6 +93,7 @@ module.exports = (sequelize, DataTypes) => {
         orgId: this.orgId,
         email: this.email,
         role: this.role,
+        type : "employee"
       },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
@@ -101,7 +102,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Employee.prototype.generateRefreshToken = function () {
   return jwt.sign(
-    { id: this.id },
+    { id: this.id  , type : "employee"},
     process.env.REFRESH_TOKEN_SECRET,
     { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
   );

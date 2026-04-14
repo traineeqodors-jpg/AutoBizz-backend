@@ -11,6 +11,7 @@ const callLogRouter = require("./src/routes/callLog.routes.js");
 const leadRouter = require("./src/routes/lead.routes.js");
 const meetingRouter = require("./src/routes/meeting.routes.js");
 const employeeRouter = require("./src/routes/employee.routes.js")
+const commonRouter = require("./src/routes/common.routes.js")
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -20,6 +21,7 @@ const scriptGenRouter = require("./src/routes/script.routes.js");
 const webhooksHeygen = require("./src/webhooks/heygenstatus.webhook.js");
 const path = require("path");
 const { initPinecone } = require("./src/config/pinecone.js");
+
 
 const PORT = process.env.PORT;
 
@@ -104,8 +106,8 @@ app.use("/api/prepareScript", scriptGenRouter);
 app.use("/api/sop", sopVideoRouter);
 app.use("/api/meeting", meetingRouter);
 app.use("/api/employee" , employeeRouter)
-
 app.use("/webhooks/heygen", webhooksHeygen);
+app.use("/api/user" , commonRouter)
 
 app.use(errorHandler);
 
