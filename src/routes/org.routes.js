@@ -2,14 +2,15 @@ const express = require("express");
 const {
   registerOrg,
   getAllOrgs,
-  userLogin,
   orgLogin,
-  orgLogout,
   refreshAccessToken,
   getCurrentOrgDetails,
   editOrg,
   handleGoogleToken,
   queryForm,
+  getAllEmployees,
+  updateEmployee,
+  deleteEmployee,
 } = require("../controllers/org.controller.js");
 const {validate} = require("../middlewares/vailidation.middleware.js");
 const registerSchema = require("../zodSchema/registerSchema.js");
@@ -22,14 +23,15 @@ router.post("/login", orgLogin);
 router.post("/refresh-token", refreshAccessToken);
 router.put("/", uploadImage.single("file") ,verifyJWT("organization"), editOrg);
 router.get("/", getAllOrgs);
-router.post("/logout", verifyJWT("organization"), orgLogout);
 router.get("/orgDetails", verifyJWT("organization"), getCurrentOrgDetails);
 router.post("/googleToken", verifyJWT("organization"), handleGoogleToken);
 
 
+//Employee
+router.get("/employee" , verifyJWT("organization") , getAllEmployees)
+router.post("/employee" , verifyJWT("organization") , updateEmployee)
+router.delete("/employee" , verifyJWT("organization") , deleteEmployee)
 
 router.post("/queryForm" , queryForm);
  
-
-
-module.exports = router;
+module.exports = router

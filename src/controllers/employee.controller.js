@@ -7,13 +7,13 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { sendInvitationEmail } = require("../services/emailServices");
 
 const createEmployee = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
   const { firstName, lastName, email, phoneNumber, role } = req.body;
 
-  if (
-    [firstName, lastName, email, phoneNumber, role].some(
-      (field) => !field,
-    )
-  ) {
+  if ([firstName, lastName, email, phoneNumber, role].some((field) => !field)) {
     throw new ApiError(400, "All fields are required including orgId");
   }
 
@@ -31,7 +31,7 @@ const createEmployee = asyncHandler(async (req, res) => {
     email,
     phoneNumber,
     role,
-    orgId : req.organization?.id,
+    orgId: req.organization?.id,
     password: tempPassword,
     refreshToken: setupToken,
   });
@@ -56,6 +56,10 @@ const createEmployee = asyncHandler(async (req, res) => {
 });
 
 const setupEmployeePassword = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
+
   const { token, email, password, confirmPassword } = req.body;
 
   if (!token || !email || !password || !confirmPassword) {
@@ -91,80 +95,62 @@ const setupEmployeePassword = asyncHandler(async (req, res) => {
 });
 
 const loginEmployee = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ApiError(400, "Request Body is Empty");
+  }
 
-    if (!email || !password) {
-        throw new ApiError(400, "Email and password are required");
-    }
+  const { email, password } = req.body;
 
-    const employee = await Employee.findOne({ where: { email } });
+  if (!email || !password) {
+    throw new ApiError(400, "Email and password are required");
+  }
 
-    if (!employee) {
-        throw new ApiError(404, "Employee does not exist");
-    }
+  const employee = await Employee.findOne({ where: { email } });
 
-    if (!employee.isVerified) {
-        throw new ApiError(401, "Account not activated. Please set your password via email first.");
-    }
+  if (!employee) {
+    throw new ApiError(404, "Employee does not exist");
+  }
 
-    const isPasswordValid = await employee.validPassword(password);
-    if (!isPasswordValid) {
-        throw new ApiError(401, "Invalid credentials");
-    }
+  if (!employee.isVerified) {
+    throw new ApiError(
+      401,
+      "Account not activated. Please set your password via email first.",
+    );
+  }
 
-    
-    const accessToken = employee.generateAccessToken();
-    const refreshToken = employee.generateRefreshToken();
+  const isPasswordValid = await employee.validPassword(password);
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid credentials");
+  }
 
- 
-    employee.refreshToken = refreshToken;
-    await employee.save({ hooks: false });
+  const accessToken = employee.generateAccessToken();
+  const refreshToken = employee.generateRefreshToken();
 
-    const loggedInEmployee = employee.toJSON();
-    delete loggedInEmployee.password;
-    delete loggedInEmployee.refreshToken;
+  employee.refreshToken = refreshToken;
+  await employee.save({ hooks: false });
 
-    const options = {
-        httpOnly: true,
-        secure: false,
-        sameSite: "None"
-    };
+  const loggedInEmployee = employee.toJSON();
+  delete loggedInEmployee.password;
+  delete loggedInEmployee.refreshToken;
 
-    return res
-        .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        .json(
-            new ApiResponse(
-                200, 
-                { employee: loggedInEmployee, accessToken, refreshToken }, 
-                "Employee logged in successfully"
-            )
-        );
-});
+  const options = {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  };
 
-const logoutEmployee = asyncHandler(async (req, res) => {
- 
-    const employee = await Employee.findByPk(req.employee?.id);
-
-    if (employee) {
-       
-        employee.refreshToken = null;
-        await employee.save({ hooks: false });
-    }
-
-    
-    const options = {
-        httpOnly: true,
-        secure: false, 
-        sameSite: "None"
-    };
-
-    return res
-        .status(200)
-        .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options)
-        .json(new ApiResponse(200, {}, "Employee logged out successfully"));
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { employee: loggedInEmployee, accessToken, refreshToken },
+        "Employee logged in successfully",
+      ),
+    );
 });
 
 
@@ -173,5 +159,4 @@ module.exports = {
   createEmployee,
   setupEmployeePassword,
   loginEmployee,
-  logoutEmployee
 };

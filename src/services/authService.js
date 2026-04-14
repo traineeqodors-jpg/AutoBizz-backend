@@ -51,12 +51,12 @@ const refreshTokenVerfication = async (refreshToken, type, req, res) => {
 
     const accessToken = user.generateAccessToken();
 
-    const options = {
-      httpOnly: true,
-      secure: false,
-      sameSite: "None",
-      path: "/",
-    };
+  const options = {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  };
 
     res.cookie("accessToken", accessToken, {
       ...options,

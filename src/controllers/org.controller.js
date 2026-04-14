@@ -12,6 +12,9 @@ const { sendQueryMail } = require("../services/emailServices");
 
 
 const Organization = db.Organization;
+const Employee = db.Employee
+const { Op } = require("sequelize");
+
 
 const generateAccessRefreshToken = async (id) => {
   try {
@@ -246,24 +249,7 @@ const editOrg = asyncHandler(async (req, res) => {
     );
 });
 
-const orgLogout = asyncHandler(async (req, res, next) => {
- 
-  const options = {
-    httpOnly: true,
-    secure: false,
-     maxAge: 7 * 24 * 60 * 60 * 1000,
-     sameSite : "lax",
-     path  : "/"
-  };
 
-  const org = await Organization.findByPk(req.organization?.id);
-  await org.update({ refreshToken: null });
-
-  res.clearCookie("accessToken", options);
-  res.clearCookie("refreshToken", options);
-
-  return res.json(new ApiResponse(200, {}, "Organizaion Logout SucessFully"));
-});
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
@@ -388,8 +374,6 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
   );
 });
 
- 
-
 
 
 const queryForm = asyncHandler(async(req,res) => {
@@ -419,15 +403,127 @@ const queryForm = asyncHandler(async(req,res) => {
 })
 
 
+
+const getAllEmployees = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, search, role, isVerified } = req.query;
+
+  const offset = (page - 1) * limit;
+
+  const whereCondition = {
+    orgId: req.organization?.id, 
+  };
+
+  
+  if (search) {
+    whereCondition[Op.or] = [
+      { firstName: { [Op.iLike]: `%${search}%` } },
+      { lastName: { [Op.iLike]: `%${search}%` } },
+      { email: { [Op.iLike]: `%${search}%` } },
+    ];
+  }
+
+  if (role) {
+    whereCondition.role = role;
+  }
+
+  if (isVerified !== undefined) {
+    whereCondition.isVerified = isVerified === "true";
+  }
+
+
+  const { count, rows: employees } = await Employee.findAndCountAll({
+    where: whereCondition,
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+    order: [["createdAt", "DESC"]], 
+    attributes: { exclude: ["password", "refreshToken", "googleRefreshToken"] }, 
+  });
+
+  if (!employees || employees.length === 0) {
+    throw new ApiError(404, "No employees found matching the criteria");
+  }
+
+  
+  res.json(
+    new ApiResponse(
+      200,
+      {
+        employees,
+        pagination: {
+          totalItems: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: parseInt(page),
+          limit: parseInt(limit),
+        },
+      },
+      "Employee Details Fetched",
+    ),
+  );
+});
+
+const updateEmployee = asyncHandler(async (req, res) => {
+  
+  const { firstName, lastName, phoneNumber, role, isVerified , id} = req.body;
+
+
+  const employee = await Employee.findOne({
+    where: {
+      id,
+      orgId: req.organization?.id,
+    },
+  });
+
+  if (!employee) {
+    throw new ApiError(404, "Employee not found or access denied");
+  }
+
+ 
+  await employee.update({
+    firstName: firstName || employee.firstName,
+    lastName: lastName || employee.lastName,
+    phoneNumber: phoneNumber || employee.phoneNumber,
+    role: role || employee.role,
+    isVerified: isVerified !== undefined ? isVerified : employee.isVerified,
+  });
+
+  res.json(new ApiResponse(200, employee, "Employee updated successfully"));
+});
+
+
+const deleteEmployee = asyncHandler(async (req, res) => {
+  const { id } = req.body;
+
+  const deletedCount = await Employee.destroy({
+    where: {
+      id,
+      orgId: req.organization?.id,
+    },
+  });
+
+  
+  if (deletedCount === 0) {
+    throw new ApiError(
+      404,
+      "Employee not found or you don't have permission to delete",
+    );
+  }
+
+  res.json(new ApiResponse(200, {}, "Employee deleted successfully"));
+});
+
+
+
 module.exports = {
   registerOrg,
   getAllOrgs,
   orgLogin,
   refreshAccessToken,
-  orgLogout,
   getCurrentOrgDetails,
   editOrg,
   handleGoogleToken,
   queryForm,
+  getAllEmployees,
+  updateEmployee,
+  deleteEmployee
   
 };
