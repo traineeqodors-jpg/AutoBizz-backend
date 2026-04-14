@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
       },
-       googleRefreshToken: {
+      googleRefreshToken: {
         type: DataTypes.STRING,
         allowNull: true,
       },
@@ -55,12 +55,6 @@ module.exports = (sequelize, DataTypes) => {
       password: {
         type: DataTypes.STRING,
         allowNull: false,
-        validate: {
-          is: {
-            args: /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/,
-            msg: "Password must be at least 8 characters long, including one number and one special character",
-          },
-        },
       },
       profileImage: {
         type: DataTypes.STRING,
@@ -83,7 +77,7 @@ module.exports = (sequelize, DataTypes) => {
           }
         },
       },
-    }
+    },
   );
 
   Employee.prototype.generateAccessToken = function () {
@@ -93,20 +87,20 @@ module.exports = (sequelize, DataTypes) => {
         orgId: this.orgId,
         email: this.email,
         role: this.role,
-        type : "employee"
+        type: "employee",
       },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
     );
   };
 
   Employee.prototype.generateRefreshToken = function () {
-  return jwt.sign(
-    { id: this.id  , type : "employee"},
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
-  );
-};
+    return jwt.sign(
+      { id: this.id, type: "employee" },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
+    );
+  };
 
   return Employee;
 };

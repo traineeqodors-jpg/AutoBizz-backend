@@ -1,9 +1,14 @@
 const jwt = require("jsonwebtoken");
 const { ApiError } = require("../utils/ApiError");
-const { accesTokenVerification, refreshTokenVerfication } = require("../services/authService");
+const {
+  accesTokenVerification,
+  refreshTokenVerfication,
+} = require("../services/authService");
 
 const verifyJWT = (type) => async (req, res, next) => {
-  const accessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+  const accessToken =
+    req.cookies?.accessToken ||
+    req.header("Authorization")?.replace("Bearer ", "");
   const refreshToken = req.cookies?.refreshToken;
 
   if (!accessToken && !refreshToken) {
@@ -11,11 +16,10 @@ const verifyJWT = (type) => async (req, res, next) => {
   }
 
   try {
-    
     const decoded = jwt.decode(accessToken || refreshToken);
-    
+
     if (!decoded || decoded.type !== type) {
-      throw new ApiError(403, `Access denied: Expected ${type} token, but got ${decoded?.type || "none"}`);
+      throw new ApiError(403, `Access denied!!`);
     }
 
     const reqKey = type === "employee" ? "employee" : "organization";
@@ -25,7 +29,7 @@ const verifyJWT = (type) => async (req, res, next) => {
       const user = await accesTokenVerification(accessToken, type);
       req[reqKey] = user;
       req[reqKey].type = reqKey;
-      
+
       return next();
     }
 
@@ -41,7 +45,9 @@ const verifyJWT = (type) => async (req, res, next) => {
 };
 
 const allowOwnerOrEmployee = async (req, res, next) => {
-  const accessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+  const accessToken =
+    req.cookies?.accessToken ||
+    req.header("Authorization")?.replace("Bearer ", "");
   const refreshToken = req.cookies?.refreshToken;
   const token = accessToken || refreshToken;
 
@@ -50,7 +56,6 @@ const allowOwnerOrEmployee = async (req, res, next) => {
   }
 
   try {
-   
     const decoded = jwt.decode(token);
     const userType = decoded?.type;
 
@@ -58,7 +63,6 @@ const allowOwnerOrEmployee = async (req, res, next) => {
       throw new ApiError(403, "Invalid token type. Access denied.");
     }
 
-    
     return verifyJWT(userType)(req, res, next);
   } catch (error) {
     next(error);
