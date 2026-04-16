@@ -11,10 +11,10 @@ const createEmployee = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Request Body is Empty");
   }
 
-  const { firstName, lastName, email, phoneNumber, role } = req.body;
+  const { firstName, lastName, email, phone, role } = req.body;
 
-  if ([firstName, lastName, email, phoneNumber, role].some((field) => !field)) {
-    throw new ApiError(400, "All fields are required including orgId");
+  if ([firstName, lastName, email, phone, role].some((field) => !field)) {
+    throw new ApiError(400, "All fields are required!!");
   }
 
   const existedEmployee = await Employee.findOne({ where: { email } });
@@ -29,7 +29,7 @@ const createEmployee = asyncHandler(async (req, res) => {
     firstName,
     lastName,
     email,
-    phoneNumber,
+    phoneNumber: phone,
     role,
     orgId: req.organization?.id,
     password: tempPassword,
@@ -152,8 +152,6 @@ const loginEmployee = asyncHandler(async (req, res) => {
       ),
     );
 });
-
-
 
 module.exports = {
   createEmployee,
