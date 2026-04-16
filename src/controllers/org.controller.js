@@ -7,14 +7,12 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { comparePassword } = require("../utils/authHelper");
 const jwt = require("jsonwebtoken");
-const path = require('path');
+const path = require("path");
 const { sendQueryMail } = require("../services/emailServices");
 
-
 const Organization = db.Organization;
-const Employee = db.Employee
+const Employee = db.Employee;
 const { Op } = require("sequelize");
-
 
 const generateAccessRefreshToken = async (id) => {
   try {
@@ -39,7 +37,7 @@ const generateAccessToken = async (id) => {
     const org = await Organization.findByPk(id);
 
     const accessToken = org.generateAccessToken();
-    return { accessToken};
+    return { accessToken };
   } catch (error) {
     console.error(error);
     throw new ApiError(
@@ -55,7 +53,7 @@ const registerOrg = asyncHandler(async (req, res) => {
   if (!req.body || Object.keys(req.body).length === 0) {
     throw new ApiError(400, "Request Body is Empty");
   }
- 
+
   const {
     firstName,
     lastName,
@@ -66,14 +64,14 @@ const registerOrg = asyncHandler(async (req, res) => {
     phone,
     password,
   } = req.body;
- 
+
   // Check if Email already Exists
   const userExists = await Organization.findOne({ where: { email } });
- 
+
   if (userExists) {
     throw new ApiError(400, "User Already Exists");
   }
- 
+
   // Inserting Org Data in DB
   const data = await Organization.create({
     firstName,
@@ -85,23 +83,23 @@ const registerOrg = asyncHandler(async (req, res) => {
     businessSize: orgSize,
     phoneNumber: phone,
   });
- 
+
   if (!data) {
     throw new ApiError(400, "Failed to Register");
   }
- 
+
   // Generating Access and Refresh Token
   const { accessToken, refreshToken } = await generateAccessRefreshToken(
     data.id,
   );
- 
+
   const options = {
     httpOnly: true,
     secure: false,
     sameSite: "lax",
     path: "/",
   };
- 
+
   return res
     .cookie("accessToken", accessToken, {
       ...options,
@@ -111,58 +109,57 @@ const registerOrg = asyncHandler(async (req, res) => {
       ...options,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
+
     .json(new ApiResponse(201, data, "Org registered Successfully"));
 });
- 
 
 // Login Org
 const orgLogin = asyncHandler(async (req, res, next) => {
-
-   if (!req.body || Object.keys(req.body).length === 0) {
+  if (!req.body || Object.keys(req.body).length === 0) {
     throw new ApiError(400, "Request Body is Empty");
   }
 
   const { email, password } = req.body;
- 
+
   // Validation for Empty Data
   if (!email || !password) {
     throw new ApiError(400, "Email or password is missing!");
   }
- 
+
   // Check if email is Valid
   const org = await Organization.findOne({
     where: {
       email: email,
     },
   });
- 
+
   if (!org) {
     throw new ApiError(404, "Email not registered!");
   }
- 
+
   // Checking if password is correct
   const isPasswordValid = await comparePassword(password, org.password);
- 
+
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid email or Password!");
   }
- 
+
   // Generating Access and Refresh Token
   const { accessToken, refreshToken } = await generateAccessRefreshToken(
     org.id,
   );
- 
+
   const loggedInUser = org.toJSON();
   delete loggedInUser.password;
   delete loggedInUser.refreshToken;
- 
+
   const options = {
     httpOnly: true,
     secure: false,
     sameSite: "lax",
     path: "/",
   };
- 
+
   return res
     .cookie("accessToken", accessToken, {
       ...options,
@@ -199,7 +196,6 @@ const editOrg = asyncHandler(async (req, res) => {
     phoneNumber,
   } = req.body;
 
-  
   const updateData = {
     firstName,
     lastName,
@@ -207,34 +203,26 @@ const editOrg = asyncHandler(async (req, res) => {
     country,
     businessName,
     businessSize,
-    phoneNumber
+    phoneNumber,
   };
 
- 
-
   if (req.file) {
-   
     if (org.profileImage) {
-     
-      const relativePath = org.profileImage.startsWith('/') 
-        ? org.profileImage.slice(1) 
+      const relativePath = org.profileImage.startsWith("/")
+        ? org.profileImage.slice(1)
         : org.profileImage;
-        
+
       const oldPath = path.join(process.cwd(), relativePath);
 
       try {
         await fs.unlink(oldPath);
       } catch (err) {
-        
         console.error("Old profile image not found on disk:", oldPath);
       }
     }
 
-    
     updateData.profileImage = `/public/${req.file.filename}`;
   }
-
-
 
   await org.update(updateData);
 
@@ -245,11 +233,9 @@ const editOrg = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, updatedOrg, "Organization updated successfully")
+      new ApiResponse(200, updatedOrg, "Organization updated successfully"),
     );
 });
-
-
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
@@ -283,20 +269,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  const { accessToken } = await generateAccessToken(
-    org.id,
-  );
+  const { accessToken } = await generateAccessToken(org.id);
 
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        { accessToken},
-        "Access token refreshed",
-      ),
-    );
+    .json(new ApiResponse(200, { accessToken }, "Access token refreshed"));
 });
 
 const getCurrentOrgDetails = asyncHandler(async (req, res) => {
@@ -325,84 +303,84 @@ const getAllOrgs = asyncHandler(async (req, res) => {
 // Hadle Google Login
 const handleGoogleToken = asyncHandler(async (req, res) => {
   const { code } = req.body;
- 
+
   const { id: orgId, email: currentEmail } = req.organization;
- 
+
   if (!code) {
     throw new ApiError(400, "Auth code is required");
   }
- 
-  
+
   const { tokens } = await oauth2Client.getToken(code);
- 
-  
+
   const ticket = await oauth2Client.verifyIdToken({
     idToken: tokens.id_token,
     audience: process.env.GOOGLE_CLIENT_ID,
   });
   const payload = ticket.getPayload();
   const googleEmail = payload.email;
- 
- 
+
   if (googleEmail !== currentEmail) {
     throw new ApiError(400, `Please choose your registered email`);
   }
- 
-   if (tokens.refresh_token) {
-   
+
+  if (tokens.refresh_token) {
     await Organization.update(
       { googleRefreshToken: tokens.refresh_token },
-      { where: { id: orgId } }
+      { where: { id: orgId } },
     );
 
-   
     await db.Employee.update(
       { googleRefreshToken: tokens.refresh_token },
-      { 
-        where: { 
-          orgId: orgId, 
-          role: 'sales' 
-        } 
-      }
+      {
+        where: {
+          orgId: orgId,
+          role: "sales",
+        },
+      },
     );
   }
- 
+
   oauth2Client.setCredentials(tokens);
- 
+
   return res.json(
     new ApiResponse(200, {}, "Google account Connected Successfully!!"),
   );
 });
 
-
-
-const queryForm = asyncHandler(async(req,res) => {
-
-   if (!req.body || Object.keys(req.body).length === 0) {
+const queryForm = asyncHandler(async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
     throw new ApiError(400, "Request Body is Empty");
   }
 
-  const { name , email , subject , message , phone} = req.body
+  const { name, email, subject, message, phone } = req.body;
 
-  if(!name || !email || !subject || !message || !phone){
-    throw new ApiError(400 , "Fields are missing")
-  } 
-
-  const to = "trainee.qodors@gmail.com"
-
-  const response = await sendQueryMail(to, { name, email, subject, message, phone });
-  if(!response){
-    throw new ApiError(400 , "Error in SendingMail")
+  if (!name || !email || !subject || !message || !phone) {
+    throw new ApiError(400, "Fields are missing");
   }
 
-  return res.status(200).json(
-    new ApiResponse(200, response, "Query submitted and email sent successfully")
-  );
+  const to = "trainee.qodors@gmail.com";
 
+  const response = await sendQueryMail(to, {
+    name,
+    email,
+    subject,
+    message,
+    phone,
+  });
+  if (!response) {
+    throw new ApiError(400, "Error in SendingMail");
+  }
 
-})
-
-
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        response,
+        "Query submitted and email sent successfully",
+      ),
+    );
+});
 
 const getAllEmployees = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, search, role, isVerified } = req.query;
@@ -410,10 +388,9 @@ const getAllEmployees = asyncHandler(async (req, res) => {
   const offset = (page - 1) * limit;
 
   const whereCondition = {
-    orgId: req.organization?.id, 
+    orgId: req.organization?.id,
   };
 
-  
   if (search) {
     whereCondition[Op.or] = [
       { firstName: { [Op.iLike]: `%${search}%` } },
@@ -430,20 +407,18 @@ const getAllEmployees = asyncHandler(async (req, res) => {
     whereCondition.isVerified = isVerified === "true";
   }
 
-
   const { count, rows: employees } = await Employee.findAndCountAll({
     where: whereCondition,
     limit: parseInt(limit),
     offset: parseInt(offset),
-    order: [["createdAt", "DESC"]], 
-    attributes: { exclude: ["password", "refreshToken", "googleRefreshToken"] }, 
+    order: [["createdAt", "DESC"]],
+    attributes: { exclude: ["password", "refreshToken", "googleRefreshToken"] },
   });
 
   if (!employees || employees.length === 0) {
     throw new ApiError(404, "No employees found matching the criteria");
   }
 
-  
   res.json(
     new ApiResponse(
       200,
@@ -462,9 +437,7 @@ const getAllEmployees = asyncHandler(async (req, res) => {
 });
 
 const updateEmployee = asyncHandler(async (req, res) => {
-  
-  const { firstName, lastName, phoneNumber, role, isVerified , id} = req.body;
-
+  const { firstName, lastName, phoneNumber, role, isVerified, id } = req.body;
 
   const employee = await Employee.findOne({
     where: {
@@ -477,7 +450,6 @@ const updateEmployee = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Employee not found or access denied");
   }
 
- 
   await employee.update({
     firstName: firstName || employee.firstName,
     lastName: lastName || employee.lastName,
@@ -489,7 +461,6 @@ const updateEmployee = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, employee, "Employee updated successfully"));
 });
 
-
 const deleteEmployee = asyncHandler(async (req, res) => {
   const { id } = req.body;
 
@@ -500,7 +471,6 @@ const deleteEmployee = asyncHandler(async (req, res) => {
     },
   });
 
-  
   if (deletedCount === 0) {
     throw new ApiError(
       404,
@@ -510,8 +480,6 @@ const deleteEmployee = asyncHandler(async (req, res) => {
 
   res.json(new ApiResponse(200, {}, "Employee deleted successfully"));
 });
-
-
 
 module.exports = {
   registerOrg,
@@ -524,6 +492,5 @@ module.exports = {
   queryForm,
   getAllEmployees,
   updateEmployee,
-  deleteEmployee
-  
+  deleteEmployee,
 };

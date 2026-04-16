@@ -21,9 +21,7 @@ const BASE_URL = process.env.BASE_URL;
 
 const Lead = db.Lead;
 
-
 const addLead = asyncHandler(async (req, res) => {
-  
   if (!req.file || !req.file.originalname.toLowerCase().endsWith(".csv")) {
     if (req.file) fs.unlinkSync(req.file.path);
     throw new ApiError(400, "Please upload a valid CSV file.");
@@ -70,15 +68,13 @@ const addLead = asyncHandler(async (req, res) => {
             rowHeaders.includes(h),
           );
           if (!hasAllHeaders) {
-           
             reject(
               new ApiError(
                 400,
                 `CSV Header mismatch. Required: ${requiredHeaders.join(", ")}`,
               ),
-              
             );
-          
+
             fs.unlinkSync(filePath);
           }
           isFirstRow = false;
@@ -129,13 +125,10 @@ const addLead = asyncHandler(async (req, res) => {
   const leadIds = savedLeads.map((l) => l.id);
 
   axios
-    .post(
-      `http://localhost:${process.env.PORT || 5000}/api/voice/batch-qualify`,
-      {
-        leadIds,
-        orgId: businessId,
-      },
-    )
+    .post(`${process.env.BACKEND_URL}/api/voice/batch-qualify`, {
+      leadIds,
+      orgId: businessId,
+    })
     .catch((err) => console.error("Background Batch Trigger Failed:", err));
 
   return res
@@ -148,8 +141,6 @@ const addLead = asyncHandler(async (req, res) => {
       ),
     );
 });
-
-
 
 const getAllLeads = asyncHandler(async (req, res) => {
   const {
@@ -165,8 +156,8 @@ const getAllLeads = asyncHandler(async (req, res) => {
   } = req.query;
 
   const offset = (page - 1) * limit;
-  console.log(req.organization, "req.organization")
-  console.log(req.employee, "req.employee")
+  console.log(req.organization, "req.organization");
+  console.log(req.employee, "req.employee");
   const businessId = req.organization?.id || req.employee?.orgId;
 
   const validSortColumns = [
@@ -276,7 +267,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
         message: `Skipping ${lead.name}: Invalid format`,
         status: "warning",
       });
-       await socketDelay();
+      await socketDelay();
       continue;
     }
 
@@ -325,7 +316,7 @@ const startQualificationBatch = asyncHandler(async (req, res) => {
         message: `Error calling ${lead.name}: ${errorMessage}`,
         status: "error",
       });
-       await socketDelay();
+      await socketDelay();
     }
   }
 
@@ -343,8 +334,6 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
   (async () => {
     try {
-      
-
       await db.CallLog.update(
         {
           status: CallStatus,
@@ -382,8 +371,6 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
 
       const io = req.app.get("io");
       io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
-
-     
     } catch (error) {
       console.error(" Background Scoring Failed:", error.message);
     }
@@ -396,5 +383,4 @@ module.exports = {
   deleteLead,
   startQualificationBatch,
   finalizeCallAndScore,
-  
 };
