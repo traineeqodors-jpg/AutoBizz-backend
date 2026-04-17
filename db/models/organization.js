@@ -47,9 +47,7 @@ module.exports = (sequelize, DataTypes) => {
         onDelete: "CASCADE",
       });
 
-     
-
-      Organization.hasMany(models.Employee , {
+      Organization.hasMany(models.Employee, {
         foreignKey: "orgId",
         as: "employees",
         onDelete: "CASCADE",
@@ -174,7 +172,7 @@ module.exports = (sequelize, DataTypes) => {
         businessName: this.businessName,
         email: this.email,
         role: this.role,
-        type : "organization"
+        type: "organization",
       },
       process.env.ACCESS_TOKEN_SECRET,
       {
@@ -187,7 +185,7 @@ module.exports = (sequelize, DataTypes) => {
     return jwt.sign(
       {
         id: this.id,
-        type : "organization"
+        type: "organization",
       },
       process.env.REFRESH_TOKEN_SECRET,
       {

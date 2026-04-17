@@ -24,6 +24,17 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Organization ID is required to link documents.");
   }
 
+  const existingDoc = await Document.findOne({
+    where: {
+      orgId: orgId,
+      originalName: req.file.originalname,
+    },
+  });
+
+  if (existingDoc) {
+    throw new ApiError(409, "This document already exists!!.");
+  }
+
   const uuid = crypto.randomUUID();
 
   //AWS S3 Logic for generating url
@@ -31,6 +42,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   const documentRecord = {
     docType: req.file?.mimetype,
     docUrl: `/public/${req.file?.filename}`,
+    originalName: req.file.originalname,
     orgId: parseInt(orgId),
     pineconeId: uuid,
   };
@@ -64,7 +76,7 @@ const getMyDocuments = asyncHandler(async (req, res) => {
 
   const documents = await Document.findAll({
     where: { orgId: organizationId },
-    order: [["createdAt", "DESC"]], 
+    order: [["createdAt", "DESC"]],
     attributes: ["id", "docType", "pineconeId", "docUrl", "createdAt"],
   });
 

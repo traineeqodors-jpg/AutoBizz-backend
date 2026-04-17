@@ -49,11 +49,6 @@ const generateAccessToken = async (id) => {
 
 // Register Org
 const registerOrg = asyncHandler(async (req, res) => {
-  // Req.body Validation
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
-
   const {
     firstName,
     lastName,
@@ -66,23 +61,34 @@ const registerOrg = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Check if Email already Exists
-  const userExists = await Organization.findOne({ where: { email } });
+  const userExists = await Organization.findOne({
+    where: { email: email.toLowerCase().trim() },
+  });
 
   if (userExists) {
     throw new ApiError(400, "User Already Exists");
   }
 
-  // Inserting Org Data in DB
-  const data = await Organization.create({
-    firstName,
-    lastName,
-    email,
-    country,
-    password,
-    businessName: orgName,
-    businessSize: orgSize,
-    phoneNumber: phone,
-  });
+  let data = null;
+
+  try {
+    // Inserting Org Data in DB
+    data = await Organization.create({
+      firstName,
+      lastName,
+      email,
+      country,
+      password,
+      businessName: orgName,
+      businessSize: orgSize,
+      phoneNumber: phone.replace(/\s/g, ""),
+    });
+  } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      throw new ApiError(400, "Email already exists");
+    }
+    throw error;
+  }
 
   if (!data) {
     throw new ApiError(400, "Failed to Register");
@@ -92,6 +98,11 @@ const registerOrg = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessRefreshToken(
     data.id,
   );
+
+  const user = data.toJSON();
+  delete user.password;
+  delete user.refreshToken;
+  delete user.googleRefreshToken;
 
   const options = {
     httpOnly: true,
@@ -121,15 +132,10 @@ const orgLogin = asyncHandler(async (req, res, next) => {
 
   const { email, password } = req.body;
 
-  // Validation for Empty Data
-  if (!email || !password) {
-    throw new ApiError(400, "Email or password is missing!");
-  }
-
   // Check if email is Valid
   const org = await Organization.findOne({
     where: {
-      email: email,
+      email: email.toLowerCase().trim(),
     },
   });
 
@@ -348,10 +354,6 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
 });
 
 const queryForm = asyncHandler(async (req, res) => {
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
-
   const { name, email, subject, message, phone } = req.body;
 
   if (!name || !email || !subject || !message || !phone) {
@@ -368,7 +370,7 @@ const queryForm = asyncHandler(async (req, res) => {
     phone,
   });
   if (!response) {
-    throw new ApiError(400, "Error in SendingMail");
+    throw new ApiError(400, "Error in Sending Mail");
   }
 
   return res
@@ -414,10 +416,6 @@ const getAllEmployees = asyncHandler(async (req, res) => {
     order: [["createdAt", "DESC"]],
     attributes: { exclude: ["password", "refreshToken", "googleRefreshToken"] },
   });
-
-  if (!employees || employees.length === 0) {
-    throw new ApiError(404, "No employees found matching the criteria");
-  }
 
   res.json(
     new ApiResponse(

@@ -7,15 +7,7 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { sendInvitationEmail } = require("../services/emailServices");
 
 const createEmployee = asyncHandler(async (req, res) => {
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
-
   const { firstName, lastName, email, phone, role } = req.body;
-
-  if ([firstName, lastName, email, phone, role].some((field) => !field)) {
-    throw new ApiError(400, "All fields are required!!");
-  }
 
   const existedEmployee = await Employee.findOne({ where: { email } });
   if (existedEmployee) {
@@ -56,18 +48,10 @@ const createEmployee = asyncHandler(async (req, res) => {
 });
 
 const setupEmployeePassword = asyncHandler(async (req, res) => {
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
-
   const { token, email, password, confirmPassword } = req.body;
 
-  if (!token || !email || !password || !confirmPassword) {
-    throw new ApiError(400, "All fields are required");
-  }
-
-  if (password !== confirmPassword) {
-    throw new ApiError(400, "Passwords do not match");
+  if (!token) {
+    throw new ApiError(400, "Token is required");
   }
 
   const employee = await Employee.findOne({
@@ -108,7 +92,7 @@ const loginEmployee = asyncHandler(async (req, res) => {
   const employee = await Employee.findOne({ where: { email } });
 
   if (!employee) {
-    throw new ApiError(404, "Employee does not exist");
+    throw new ApiError(404, "Employee with this email doesn't exist");
   }
 
   if (!employee.isVerified) {

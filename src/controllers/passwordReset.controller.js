@@ -7,20 +7,22 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { Op } = require("sequelize");
 const { comparePassword } = require("../utils/authHelper");
-const { sendReserPasswordLink } = require("../services/emailServices");
+const { sendResetPasswordLink } = require("../services/emailServices");
 const PasswordReset = db.PasswordReset;
 const Organization = db.Organization;
-
 
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
-  const org = await Organization.findOne({ where: { email } });
+  const org = await Organization.findOne({
+    where: { email: email.toLowerCase().trim() },
+  });
+
   if (!org) {
     throw new ApiError(401, "Organization Not Found");
   }
 
-   await PasswordReset.destroy({ where: { orgId: org.id } });
+  await PasswordReset.destroy({ where: { orgId: org.id } });
 
   const token = crypto.randomBytes(32).toString("hex");
 
@@ -32,9 +34,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     expiresIn,
   });
 
-
-
-   await sendReserPasswordLink(token)
+  await sendResetPasswordLink(token, org.email);
 
   res
     .status(200)
@@ -48,7 +48,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   const resetRecord = await PasswordReset.findOne({
     where: {
       token,
-      expiresIn: { [Op.gt]: new Date() }, 
+      expiresIn: { [Op.gt]: new Date() },
     },
   });
 
@@ -56,38 +56,31 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid Token or Expired");
   }
 
-  
-  
+  const org = await Organization.findByPk(resetRecord.orgId);
 
-  
- const org = await Organization.findByPk(resetRecord.orgId);
+  if (!org) {
+    throw new ApiError(400, "Organization Not Found");
+  }
 
- if(!org){
-  throw new ApiError(400 , "Organization Not Found")
- }
+  const isValidNewPassword = await comparePassword(newPassword, org.password);
+  if (isValidNewPassword) {
+    throw new ApiError(400, "Please Enter New Password rather than old one");
+  }
 
- const isValidNewPassword = await comparePassword(newPassword , org.password)
- if(isValidNewPassword){
-  throw new ApiError(400 , "Please Enter New Password rather than old one")
- }
+  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    throw new ApiError(
+      400,
+      "Password must be at least 8 characters long and include one number and one special character",
+    );
+  }
 
+  org.password = newPassword;
+  await org.save({ validate: false });
 
-
- const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
- if(!passwordRegex.test(newPassword)){
-   throw new ApiError(400 ,"Password must be at least 8 characters long and include one number and one special character");
- }
- 
-
-org.password = newPassword;
-await org.save({validate : false}); 
-  
-
-  
   await resetRecord.destroy();
 
   res.status(200).json({ message: "Password reset successful." });
 });
 
-
-module.exports = { forgotPassword , resetPassword}
+module.exports = { forgotPassword, resetPassword };

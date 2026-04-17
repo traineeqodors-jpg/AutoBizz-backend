@@ -114,7 +114,7 @@ const sendMeetingConfirmationEmail = async (
   }
 };
 
-const sendReserPasswordLink = async (token) => {
+const sendResetPasswordLink = async (token, email) => {
   const resetUrl = `${process.env.FRONTEND_URL}/resetpassword/${token}`;
 
   try {
@@ -174,7 +174,6 @@ const sendQueryMail = async (to, data) => {
   return await transporter.sendMail(mailOptions);
 };
 
-
 const sendInvitationEmail = async (email, firstName, setupUrl) => {
   const htmlContent = `
     <!DOCTYPE html>
@@ -228,7 +227,7 @@ module.exports = {
   generateLeadToken,
   sendInterestEmail,
   sendMeetingConfirmationEmail,
-  sendReserPasswordLink,
+  sendResetPasswordLink,
   sendQueryMail,
-  sendInvitationEmail
+  sendInvitationEmail,
 };
