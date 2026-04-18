@@ -7,6 +7,78 @@ const generateLeadToken = (leadId) => {
   return jwt.sign({ leadId }, JWT_SECRET, { expiresIn: "1d" });
 };
 
+const baseEmailTemplate = ({ title, bodyContent }) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            .container { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                max-width: 600px; 
+                margin: 0 auto; 
+                border: 1px solid #e0e0e0; 
+                border-radius: 12px; 
+                overflow: hidden; 
+            }
+            .header { 
+                background-color: #eaf0ff; 
+                padding: 10px 5px; 
+                text-align: center; 
+                color: #3c6ce4; 
+            }
+            .content { 
+                padding: 40px 30px; 
+                line-height: 1.6; 
+                color: #374151; 
+            }
+            .button-wrapper { 
+                text-align: center; 
+                margin: 30px 0; 
+            }
+            .button { 
+                background-color: #3c6ce4; 
+                color: white !important; 
+                padding: 14px 30px; 
+                text-decoration: none; 
+                border-radius: 8px; 
+                font-weight: bold; 
+                display: inline-block; 
+            }
+            .footer { 
+                background-color: #f9fafb; 
+                padding: 20px; 
+                text-align: center; 
+                font-size: 12px; 
+                color: #6b7280; 
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <img 
+                    src="https://raw.githubusercontent.com/traineeqodors-jpg/AutoBizz-frontend/refs/heads/development/public/logo.png" 
+                    alt="Company Logo" 
+                    style="max-width: 120px; margin-bottom: 15px;" 
+                />
+                <h1 style="margin:0;">${title}</h1>
+            </div>
+
+            <div class="content">
+                ${bodyContent}
+            </div>
+
+            <div class="footer">
+                <p>This is an automated message. Please do not reply to this email.</p>
+                <p>&copy; ${new Date().getFullYear()} AutoBizz. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+};
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -114,14 +186,46 @@ const sendMeetingConfirmationEmail = async (
   }
 };
 
-const sendResetPasswordLink = async (token, email) => {
+const sendResetPasswordLink = async (token, email, firstName = "User") => {
   const resetUrl = `${process.env.FRONTEND_URL}/resetpassword/${token}`;
+
+  const bodyContent = `
+    <p>Hello <strong>${firstName}</strong>,</p>
+    
+    <p>
+        We received a request to reset your account password. 
+        Click the button below to set a new password. 
+        This link is valid for <strong>1 hour</strong>.
+    </p>
+
+    <div class="button-wrapper">
+        <a href="${resetUrl}" class="button">Reset Password</a>
+    </div>
+
+    <p>If the button doesn't work, copy and paste this link into your browser:</p>
+    <p style="word-break: break-all; font-size: 13px; color: #3c6ce4;">
+        ${resetUrl}
+    </p>
+
+    <p>
+        If you did not request this, you can safely ignore this email. 
+        Your password will remain unchanged.
+    </p>
+    
+    <p>Regards,<br><strong>Support Team</strong></p>
+  `;
+
+  const htmlContent = baseEmailTemplate({
+    title: "Reset Your Password",
+    bodyContent,
+  });
 
   try {
     await transporter.sendMail({
+      from: `"Admin Support" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Password Reset Request",
-      html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. Valid for 1 hour.</p>`,
+      html: htmlContent,
     });
   } catch (error) {
     console.error("SMTP ERROR:", error);
@@ -131,96 +235,113 @@ const sendResetPasswordLink = async (token, email) => {
 const sendQueryMail = async (to, data) => {
   const { name, email, subject, message, phone } = data;
 
-  const mailOptions = {
-    from: `"${name}" <${email}>`,
-    to: to,
-    subject: `New Inquiry: ${subject}`,
-    html: `
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-        <div style="background-color: #4F46E5; padding: 24px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">New Business Inquiry</h1>
+  const bodyContent = `
+    <div style="margin-bottom: 20px;">
+        <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
+            From
+        </span>
+        <span style="font-size: 18px; color: #111827;">
+            ${name}
+        </span>
+    </div>
+
+    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+        <div style="flex: 1;">
+            <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
+                Email
+            </span>
+            <a href="mailto:${email}" style="font-size: 16px; color: #3c6ce4; text-decoration: none;">
+                ${email}
+            </a>
         </div>
-        <div style="padding: 30px; background-color: #ffffff;">
-            <div style="margin-bottom: 20px;">
-                <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">From</span>
-                <span style="font-size: 18px; color: #111827;">${name}</span>
-            </div>
-            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                <div style="flex: 1;">
-                    <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Email</span>
-                    <a href="mailto:${email}" style="font-size: 16px; color: #4F46E5; text-decoration: none;">${email}</a>
-                </div>
-                <div style="flex: 1;">
-                    <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Phone</span>
-                    <span style="font-size: 16px; color: #111827;">${phone}</span>
-                </div>
-            </div>
-            <div style="margin-bottom: 20px; border-top: 1px solid #f3f4f6; padding-top: 20px;">
-                <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Subject</span>
-                <span style="font-size: 16px; color: #111827; font-weight: 500;">${subject}</span>
-            </div>
-            <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid #4F46E5;">
-                <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; margin-bottom: 10px;">Message</span>
-                <p style="font-size: 15px; color: #374151; margin: 0; line-height: 1.6;">${message}</p>
-            </div>
-        </div>
-        <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #9ca3af;">
-            This query was sent from your website's contact form.
+
+        <div style="flex: 1;">
+            <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
+                Phone
+            </span>
+            <span style="font-size: 16px; color: #111827;">
+                ${phone}
+            </span>
         </div>
     </div>
-    `,
-  };
 
-  return await transporter.sendMail(mailOptions);
+    <div style="margin-bottom: 20px; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+        <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">
+            Subject
+        </span>
+        <span style="font-size: 16px; color: #111827; font-weight: 500;">
+            ${subject}
+        </span>
+    </div>
+
+    <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid #3c6ce4;">
+        <span style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; margin-bottom: 10px;">
+            Message
+        </span>
+        <p style="font-size: 15px; color: #374151; margin: 0; line-height: 1.6;">
+            ${message}
+        </p>
+    </div>
+  `;
+
+  const htmlContent = baseEmailTemplate({
+    title: "New Business Inquiry",
+    bodyContent,
+  });
+
+  try {
+    await transporter.sendMail({
+      from: `"${name}" <${email}>`,
+      to,
+      subject: `New Inquiry: ${subject}`,
+      html: htmlContent,
+    });
+  } catch (error) {
+    console.error("SMTP ERROR:", error);
+  }
 };
 
 const sendInvitationEmail = async (email, firstName, setupUrl) => {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            .container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; }
-            .header { background-color: #4F46E5; padding: 40px 20px; text-align: center; color: white; }
-            .content { padding: 40px 30px; line-height: 1.6; color: #374151; }
-            .button-wrapper { text-align: center; margin: 30px 0; }
-            .button { background-color: #4F46E5; color: white !important; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; }
-            .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1 style="margin:0;">Welcome to the Team!</h1>
-            </div>
-            <div class="content">
-                <p>Hello <strong>${firstName}</strong>,</p>
-                <p>An account has been created for you at our organization. We are excited to have you on board! To get started and access your dashboard, you need to secure your account by setting up a password.</p>
-                
-                <div class="button-wrapper">
-                    <a href="${setupUrl}" class="button">Set Up Your Password</a>
-                </div>
+  const bodyContent = `
+    <p>Hello <strong>${firstName}</strong>,</p>
 
-                <p>If the button doesn't work, copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; font-size: 13px; color: #4F46E5;">${setupUrl}</p>
-                
-                <p>Regards,<br><strong>Operations Team</strong></p>
-            </div>
-            <div class="footer">
-                <p>This is an automated message. Please do not reply to this email.</p>
-                <p>&copy; ${new Date().getFullYear()} Your Business Name. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
+    <p>
+        An account has been created for you at our organization. 
+        We are excited to have you on board! To get started and access your dashboard, 
+        you need to secure your account by setting up a password.
+    </p>
+
+    <div class="button-wrapper">
+        <a href="${setupUrl}" class="button">Set Up Your Password</a>
+    </div>
+
+    <p>If the button doesn't work, copy and paste this link into your browser:</p>
+
+    <p style="word-break: break-all; font-size: 13px; color: #3c6ce4;">
+        ${setupUrl}
+    </p>
+
+    <p>
+        Regards,<br>
+        <strong>Operations Team</strong>
+    </p>
   `;
 
-  return await transporter.sendMail({
-    from: `"Admin Support" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: "Set up your account password",
-    html: htmlContent,
+  const htmlContent = baseEmailTemplate({
+    title: "Welcome to the Team!",
+    bodyContent,
   });
+
+  try {
+    return await transporter.sendMail({
+      from: `"Admin Support" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Set up your account password",
+      html: htmlContent,
+    });
+  } catch (error) {
+    console.error("SMTP ERROR:", error);
+  }
 };
 
 module.exports = {

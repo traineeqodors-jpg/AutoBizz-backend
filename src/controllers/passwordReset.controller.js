@@ -4,12 +4,12 @@ const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 const { Op } = require("sequelize");
 const { comparePassword } = require("../utils/authHelper");
 const { sendResetPasswordLink } = require("../services/emailServices");
 const PasswordReset = db.PasswordReset;
 const Organization = db.Organization;
+const Employee = db.Employee;
 
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -34,7 +34,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     expiresIn,
   });
 
-  await sendResetPasswordLink(token, org.email);
+  await sendResetPasswordLink(token, org.email, org.firstName);
 
   res
     .status(200)
@@ -67,11 +67,12 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please Enter New Password rather than old one");
   }
 
-  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+  const passwordRegex =
+    /^(?=.*[0-9])(?=.*[!@#$%^&*_\-])[a-zA-Z0-9!@#$%^&*_\-]{7,}$/;
   if (!passwordRegex.test(newPassword)) {
     throw new ApiError(
       400,
-      "Password must be at least 8 characters long and include one number and one special character",
+      "Password must be at least 7 characters long and include one number and one special character",
     );
   }
 
@@ -83,4 +84,40 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Password reset successful." });
 });
 
-module.exports = { forgotPassword, resetPassword };
+const updatePassword = asyncHandler(async (req, res) => {
+  const isOwner = req?.organization?.role === "owner";
+
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+
+  if (newPassword !== confirmPassword) {
+    throw new ApiError(400, "Passwords do not match");
+  }
+
+  let user = null;
+
+  console.log(isOwner);
+
+  if (isOwner) {
+    user = await Organization.findByPk(req.organization?.id);
+  } else {
+    user = await Employee.findByPk(req.employee?.id);
+  }
+
+  if (!user) throw new ApiError(400, "User Not Found");
+
+  const isOldValid = await comparePassword(oldPassword, user.password);
+  if (!isOldValid) throw new ApiError(400, "Old password is incorrect");
+
+  const isSame = await comparePassword(newPassword, user.password);
+  if (isSame)
+    throw new ApiError(400, "Please Enter New Password rather than old one");
+
+  user.password = newPassword;
+  await user.save({ validate: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Password updated successfully"));
+});
+
+module.exports = { forgotPassword, resetPassword, updatePassword };

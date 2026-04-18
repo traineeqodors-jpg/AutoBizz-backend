@@ -102,9 +102,8 @@ const prepareScript = asyncHandler(async (req, res) => {
         },
       ],
     });
-    
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
 
   const finalScript = chatResponse?.message?.content;
@@ -117,36 +116,35 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Request Body is Empty");
   }
 
-  const { scriptContent } = req.body;
+  const { script, avatar_id, voice_id } = req.body;
 
   const newSop = {
     orgId,
-    videoScript: scriptContent,
+    videoScript: script,
   };
 
   const data = await Sop.create(newSop);
 
   const response = await axios.post(
-    "https://api.heygen.com/v2/video/generate", 
+    "https://api.heygen.com/v2/video/generate",
     {
       video_inputs: [
-     
         {
           character: {
             type: "avatar",
-            avatar_id: "3b700c2d48574599ac1b126d22eacea7",
+            avatar_id: avatar_id,
             avatar_style: "normal",
           },
           voice: {
             type: "text",
-            input_text: scriptContent,
-            voice_id: "f1e53f59a3314161b818ebcf9a2b5205",
+            input_text: script,
+            voice_id: voice_id,
           },
         },
       ],
       dimension: { width: 1280, height: 720 },
-      callback_url: process.env.BASE_URL, 
-      callback_id: `${orgId}_sop_video`, 
+      callback_url: process.env.BASE_URL,
+      callback_id: `${orgId}_sop_video`,
     },
     {
       headers: {
@@ -171,8 +169,8 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const businessId = req?.organization?.id || req.employee?.orgId;
-    console.log(req.organization, "req.organization")
-  console.log(req.employee, "req.employee")
+  console.log(req.organization, "req.organization");
+  console.log(req.employee, "req.employee");
 
   if (!businessId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
@@ -184,8 +182,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
     },
   });
 
-  if(!videos){
-    throw new ApiError(400 , "Cant Fetch Videos")
+  if (!videos) {
+    throw new ApiError(400, "Cant Fetch Videos");
   }
 
   return res.json(new ApiResponse(200, videos || [], "All Sop Videos"));
@@ -199,7 +197,6 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
 
-  
   const video = await Sop.findOne({
     where: {
       id: videoId,
@@ -207,14 +204,12 @@ const deleteVideo = asyncHandler(async (req, res) => {
     },
   });
 
- 
   if (!video) {
     throw new ApiError(
       404,
       "Video not found or you do not have permission to delete it",
     );
   }
-
 
   await video.destroy();
 
