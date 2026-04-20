@@ -18,6 +18,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   }
 
   const index = req.app.locals.pineconeIndex;
+  const io = req.app.get("io");
 
   const orgId = req.organization.id;
   if (!orgId) {
@@ -55,13 +56,29 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 
   console.log(uuid);
 
-  upsertFileService({ file: req.file, businessId: orgId, index, uuid }).catch(
-    (error) => {
-      console.error("Background File Upload Failed:", error);
-    },
+  res.json(
+    new ApiResponse(201, savedDoc, "File uploaded. Processing started."),
   );
 
-  res.json(new ApiResponse(201, savedDoc, `saved successfully.`));
+  upsertFileService({ file: req.file, businessId: orgId, index, uuid })
+    .then(() => {
+      console.log("Emitting to:", `user_${req.organization.id}`);
+
+      io.to(`user_${req.organization.id}`).emit("document-status", {
+        uuid,
+        status: "completed",
+        message: "Document processed successfully",
+      });
+    })
+    .catch((error) => {
+      console.error(error);
+
+      io.to(`user_${req.organization.id}`).emit("document-status", {
+        uuid,
+        status: "failed",
+        message: "Document processing failed",
+      });
+    });
 });
 
 const getMyDocuments = asyncHandler(async (req, res) => {
