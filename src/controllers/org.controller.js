@@ -168,6 +168,7 @@ const orgLogin = asyncHandler(async (req, res, next) => {
     );
 });
 
+// Edit Organization Details
 const editOrg = asyncHandler(async (req, res) => {
   const orgId = req.user?.orgId || req.user?.id;
   const org = await Organization.findByPk(orgId);
@@ -227,7 +228,7 @@ const editOrg = asyncHandler(async (req, res) => {
     );
 });
 
-// Hadle Google Login
+// Handle Google Login
 const handleGoogleToken = asyncHandler(async (req, res) => {
   const { code } = req.body;
 
@@ -243,6 +244,7 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
     idToken: tokens.id_token,
     audience: process.env.GOOGLE_CLIENT_ID,
   });
+
   const payload = ticket.getPayload();
   const googleEmail = payload.email;
 
@@ -274,6 +276,7 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
   );
 });
 
+// Contact Us
 const queryForm = asyncHandler(async (req, res) => {
   const { name, email, subject, message, phone } = req.body;
 
@@ -286,25 +289,21 @@ const queryForm = asyncHandler(async (req, res) => {
     message,
     phone,
   });
-  if (!response) {
-    throw new ApiError(400, "Error in Sending Mail");
-  }
 
   return res
     .status(200)
     .json(
-      new ApiResponse(
-        200,
-        response,
-        "Query submitted and email sent successfully",
-      ),
+      new ApiResponse(200, null, "Query submitted and email sent successfully"),
     );
 });
 
+// Get all Employees Data
 const getAllEmployees = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, search, role, isVerified } = req.query;
 
   const offset = (page - 1) * limit;
+
+  const hasFilters = !!(search || role || isVerified);
 
   const whereCondition = {
     orgId: req.user?.id,
@@ -345,12 +344,14 @@ const getAllEmployees = asyncHandler(async (req, res) => {
           currentPage: parseInt(page),
           limit: parseInt(limit),
         },
+        hasFilters,
       },
       "Employee Details Fetched",
     ),
   );
 });
 
+// Update Employee data
 const updateEmployee = asyncHandler(async (req, res) => {
   const { firstName, lastName, phoneNumber, role, isVerified, id } = req.body;
 
@@ -376,8 +377,11 @@ const updateEmployee = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, employee, "Employee updated successfully"));
 });
 
+// Delete Employee
 const deleteEmployee = asyncHandler(async (req, res) => {
   const { id } = req.body;
+
+  if (!id) throw new ApiError(400, "Please pass id to delete Employee!");
 
   const deletedCount = await Employee.destroy({
     where: {

@@ -17,16 +17,32 @@ const createEmployee = asyncHandler(async (req, res) => {
   const setupToken = crypto.randomBytes(32).toString("hex");
   const tempPassword = crypto.randomBytes(12).toString("hex") + "1!Aa";
 
-  const employee = await Employee.create({
-    firstName,
-    lastName,
-    email,
-    phoneNumber: phone,
-    role,
-    orgId: req.organization?.id,
-    password: tempPassword,
-    refreshToken: setupToken,
-  });
+  let employee = null;
+
+  if (role === "sales") {
+    employee = await Employee.create({
+      firstName,
+      lastName,
+      email,
+      phoneNumber: phone,
+      role,
+      orgId: req.user?.id,
+      password: tempPassword,
+      refreshToken: setupToken,
+      googleRefreshToken: req.user?.googleRefreshToken,
+    });
+  } else {
+    employee = await Employee.create({
+      firstName,
+      lastName,
+      email,
+      phoneNumber: phone,
+      role,
+      orgId: req.user?.id,
+      password: tempPassword,
+      refreshToken: setupToken,
+    });
+  }
 
   const setupUrl = `${process.env.FRONTEND_URL}/setup-password?token=${setupToken}&email=${email}`;
 
@@ -36,12 +52,18 @@ const createEmployee = asyncHandler(async (req, res) => {
     console.error("Email failed to send:", err);
   }
 
+  const employeeData = employee.toJSON();
+
+  delete employeeData.password;
+  delete employeeData.refreshToken;
+  delete employeeData.googleRefreshToken;
+
   return res
     .status(201)
     .json(
       new ApiResponse(
         201,
-        employee,
+        employeeData,
         "Employee created and invitation sent successfully",
       ),
     );

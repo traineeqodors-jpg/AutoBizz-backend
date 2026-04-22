@@ -6,6 +6,7 @@ const contactUsSchema = z.object({
     .min(1, "Name is Required")
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name is too long"),
+
   email: z
     .string()
     .trim()

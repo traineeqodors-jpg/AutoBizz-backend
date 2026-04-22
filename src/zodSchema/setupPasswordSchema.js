@@ -12,6 +12,13 @@ const setupPasswordSchema = z
       .email("Enter a valid email address")
       .max(255, "Email too long"),
 
+    token: z
+      .string({
+        error: (issue) => issue.input === undefined && "Token is Required",
+      })
+      .trim()
+      .min(1, "Token is required"),
+
     password: z
       .string({
         error: (issue) => issue.input === undefined && "Password is Required",

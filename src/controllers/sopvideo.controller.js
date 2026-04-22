@@ -51,7 +51,7 @@ const prepareScript = asyncHandler(async (req, res) => {
 
   const { fileUuids, query } = req.body;
 
-  const businessId = req.organization.id;
+  const businessId = req.user.id;
 
   const file = fs.readFileSync("./prompts.yaml", "utf8");
   const promptConfig = parse(file).sop_scriptwriter;
@@ -112,7 +112,7 @@ const prepareScript = asyncHandler(async (req, res) => {
 });
 
 const generateSOPVideo = asyncHandler(async (req, res) => {
-  const orgId = req.organization.id;
+  const orgId = req.user.id;
   if (!req.body || Object.keys(req.body).length === 0) {
     throw new ApiError(400, "Request Body is Empty");
   }
@@ -149,8 +149,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const businessId = req.user?.orgId || req?.user?.id ;
-
+  const businessId = req.user?.orgId || req?.user?.id;
 
   if (!businessId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");

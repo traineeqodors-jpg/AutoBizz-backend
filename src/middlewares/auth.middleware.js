@@ -26,8 +26,6 @@ const verifyJWT = async (req, res, next) => {
         : process.env.REFRESH_TOKEN_SECRET,
     );
 
-    console.log(decoded);
-
     const Model = decoded.type === "employee" ? db.Employee : db.Organization;
 
     let user = await Model.findByPk(decoded.id);

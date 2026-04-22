@@ -7,9 +7,6 @@ const { asyncHandler } = require("../utils/asyncHandler");
 
 const CallLog = db.CallLog;
 
-
-
-
 const getAllCallLogs = asyncHandler(async (req, res) => {
   const {
     page = 1,
@@ -22,14 +19,23 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
     order = "DESC",
   } = req.query;
 
-  const offset = (page - 1) * limit;
+  const parsedLimit = parseInt(limit);
+  const parsedPage = parseInt(page);
+
+  const offset = (parsedPage - 1) * parsedLimit;
+
   const orgId = req.user?.orgId || req.user?.id;
 
- 
-  const validSortColumns = ["createdAt", "duration", "status", "callSid", "to", "from"];
+  const validSortColumns = [
+    "createdAt",
+    "duration",
+    "status",
+    "callSid",
+    "to",
+    "from",
+  ];
   const sortField = validSortColumns.includes(sortBy) ? sortBy : "createdAt";
   const sortOrder = order.toUpperCase() === "ASC" ? "ASC" : "DESC";
-
 
   const queryConditions = {
     orgId: orgId,
@@ -44,27 +50,28 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
     ];
   }
 
-
   if (status) queryConditions.status = status;
-
 
   if (startDate || endDate) {
     queryConditions.createdAt = {};
     if (startDate) {
-      queryConditions.createdAt[Op.gte] = new Date(`${startDate}T00:00:00.000Z`);
+      queryConditions.createdAt[Op.gte] = new Date(
+        `${startDate}T00:00:00.000Z`,
+      );
     }
     if (endDate) {
       queryConditions.createdAt[Op.lte] = new Date(`${endDate}T23:59:59.999Z`);
     }
   }
 
-  
+  // hasFilters logic
+  const hasFilters = !!(search || status || startDate || endDate);
+
   const { count, rows } = await CallLog.findAndCountAll({
     where: queryConditions,
     limit: parseInt(limit),
     offset: parseInt(offset),
     order: [[sortField, sortOrder]],
- 
   });
 
   return res.status(200).json(
@@ -77,49 +84,43 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
           totalPages: Math.ceil(count / limit),
           currentPage: parseInt(page),
         },
-        filters: { search, status, startDate, endDate }
+        hasFilters,
+        filters: { search, status, startDate, endDate },
       },
-      "Call Logs retrieved successfully"
-    )
+      "Call Logs retrieved successfully",
+    ),
   );
 });
 
+const getIndividualCallLogs = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
+  const callLog = await CallLog.findByPk(id);
 
-const getIndividualCallLogs = asyncHandler (async (req,res) => {
+  if (!callLog) {
+    throw new ApiError(404, "CallLog not found or deleted");
+  }
 
+  res.json(new ApiResponse(200, callLog, "Call Log"));
+});
 
-    const { id } = req.params;
+const deleteCallLog = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    const callLog = await CallLog.findByPk(id)
+  const callLog = await CallLog.findOne({
+    where: {
+      id,
+      orgId: req.user?.orgId || req.user?.id,
+    },
+  });
 
-    if(!callLog){
-        throw new ApiError(404 , "CallLog not found or deleted")
-    }
+  if (!callLog) {
+    throw new ApiError(400, "Call log not found or corrupted");
+  }
 
-    res.json(new ApiResponse(200 , callLog , "Call Log"))
-})
+  await callLog.destroy();
 
-const deleteCallLog = asyncHandler(async (req,res) => {
+  res.json(new ApiResponse(200, {}, "Call Log Deleted SuccessFully"));
+});
 
-    const { id } = req.params
-
-    const callLog = await CallLog.findOne({
-      where: {
-        id,
-        orgId: req.user?.orgId || req.user?.id,
-      },
-    });
-
-    if(!callLog){
-        throw new ApiError(400 , "Call log not found or corrupted")
-    }
-
-    await callLog.destroy();
-
-    res.json(new ApiResponse(200 , {} , "Call Log Deleted SuccessFully"))
-    
-
-})
-
-module.exports = { getAllCallLogs , getIndividualCallLogs , deleteCallLog}
+module.exports = { getAllCallLogs, getIndividualCallLogs, deleteCallLog };

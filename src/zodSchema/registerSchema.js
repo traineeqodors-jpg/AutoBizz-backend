@@ -9,6 +9,7 @@ const registerSchema = z.object({
           : "First Name must be a string",
     })
     .trim()
+    .min(1, { message: "First name is Required!" })
     .min(2, { message: "First name must be at least 2 characters long!" })
     .max(50, { message: "First name must be at most 50 characters long!" }),
 
@@ -20,6 +21,7 @@ const registerSchema = z.object({
           : "Last Name must be a string",
     })
     .trim()
+    .min(1, { message: "Last name is Required!" })
     .min(2, { message: "Last name must be at least 2 characters long!" })
     .max(50, { message: "Last name must be at most 50 characters long!" }),
 
@@ -88,6 +90,7 @@ const registerSchema = z.object({
       error: (issue) => issue.input === undefined && "Password is Required",
     })
     .trim()
+    .min(1, { message: "Password is Required!" })
     .min(7, { message: "Password must be at least 7 characters long!" })
     .max(100, { message: "Password must be at most 100 characters long!" })
     .regex(/^(?=.*[0-9])(?=.*[!@#$%^&*_\-])[a-zA-Z0-9!@#$%^&*_\-]{7,}$/, {

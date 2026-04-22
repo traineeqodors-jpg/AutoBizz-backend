@@ -1,9 +1,14 @@
 const express = require("express");
-const orgRouter = require("./src/routes/org.routes.js");
-const errorHandler = require("./src/middlewares/error.middleware.js");
+const path = require("path");
+const http = require("http");
+
 const cors = require("cors");
-const app = express();
 const cookieParser = require("cookie-parser");
+const { Server } = require("socket.io");
+
+const errorHandler = require("./src/middlewares/error.middleware.js");
+
+const orgRouter = require("./src/routes/org.routes.js");
 const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
 const documentRouter = require("./src/routes/document.routes.js");
 const orgDetailsRouter = require("./src/routes/orgDetails.routes.js");
@@ -12,18 +17,16 @@ const leadRouter = require("./src/routes/lead.routes.js");
 const meetingRouter = require("./src/routes/meeting.routes.js");
 const employeeRouter = require("./src/routes/employee.routes.js");
 const commonRouter = require("./src/routes/common.routes.js");
-const http = require("http");
-const { Server } = require("socket.io");
-
 const voiceRouter = require("./src/routes/voice.routes.js");
 const sopVideoRouter = require("./src/routes/sop.routes.js");
 const scriptGenRouter = require("./src/routes/script.routes.js");
 const webhooksHeygen = require("./src/webhooks/heygenstatus.webhook.js");
-const path = require("path");
+
 const { initPinecone } = require("./src/config/pinecone.js");
 
 const PORT = process.env.PORT;
 
+const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -39,7 +42,7 @@ const io = new Server(server, {
       "http://192.168.0.41:3000",
     ],
     credentials: true,
-  }, // Your React URL
+  },
 });
 
 app.use(
@@ -94,6 +97,7 @@ app.get("/", (req, res) => {
   res.send("hello World");
 });
 
+// Routes
 app.use("/api/org", orgRouter);
 app.use("/api/password", passwordResetRouter);
 app.use("/api/document", documentRouter);

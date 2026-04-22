@@ -290,14 +290,18 @@ const sendQueryMail = async (to, data) => {
   });
 
   try {
-    await transporter.sendMail({
+    const response = await transporter.sendMail({
       from: `"${name}" <${email}>`,
       to,
       subject: `New Inquiry: ${subject}`,
       html: htmlContent,
     });
+
+    console.log("Mail sent Successfully", response);
+    return response;
   } catch (error) {
     console.error("SMTP ERROR:", error);
+    throw new ApiError(500, "Failed to send email");
   }
 };
 

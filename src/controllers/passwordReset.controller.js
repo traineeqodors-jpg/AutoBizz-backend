@@ -11,6 +11,7 @@ const PasswordReset = db.PasswordReset;
 const Organization = db.Organization;
 const Employee = db.Employee;
 
+// Send Link to Reset Passowrd
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 

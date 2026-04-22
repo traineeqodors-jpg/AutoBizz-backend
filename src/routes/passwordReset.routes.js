@@ -1,20 +1,22 @@
 const express = require("express");
+
+const { verifyJWT } = require("../middlewares/auth.middleware");
+
 const {
   resetPassword,
   forgotPassword,
   updatePassword,
 } = require("../controllers/passwordReset.controller");
-const { authorizeRoles, verifyJWT } = require("../middlewares/auth.middleware");
+
 const router = express.Router();
 
+// Forget Password
 router.post("/resetPassword", forgotPassword);
 
+// Reset Password
 router.post("/resetPassword/:token", resetPassword);
 
-router.post(
-  "/updatePassword",
-  verifyJWT,
-  updatePassword,
-);
+// Update Password
+router.post("/updatePassword", verifyJWT, updatePassword);
 
 module.exports = router;
