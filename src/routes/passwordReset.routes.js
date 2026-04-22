@@ -4,10 +4,7 @@ const {
   forgotPassword,
   updatePassword,
 } = require("../controllers/passwordReset.controller");
-const {
-  allowOwnerOrEmployee,
-  authorizeRoles,
-} = require("../middlewares/auth.middleware");
+const { authorizeRoles, verifyJWT } = require("../middlewares/auth.middleware");
 const router = express.Router();
 
 router.post("/resetPassword", forgotPassword);
@@ -16,8 +13,7 @@ router.post("/resetPassword/:token", resetPassword);
 
 router.post(
   "/updatePassword",
-  allowOwnerOrEmployee,
-  authorizeRoles("sales"),
+  verifyJWT,
   updatePassword,
 );
 

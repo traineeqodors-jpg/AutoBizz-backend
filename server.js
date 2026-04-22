@@ -114,7 +114,7 @@ io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on("join-room", (userId) => {
-    const room = userId;
+    const room = `user_${userId}`;
 
     if (!socket.rooms.has(room)) {
       socket.join(room);

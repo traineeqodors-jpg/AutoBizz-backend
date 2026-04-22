@@ -1,20 +1,20 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { 
-  uploadDocuments, 
-  getMyDocuments, 
-  deleteDocument 
+const {
+  uploadDocuments,
+  getMyDocuments,
+  deleteDocument,
 } = require("../controllers/document.controller");
-const { verifyJWT } = require("../middlewares/auth.middleware");
+const { verifyJWT, authorizeRoles } = require("../middlewares/auth.middleware");
 const { uploads } = require("../utils/multer");
 
 /**
  * All document routes restricted strictly to the Organization/Owner
  */
-router.post("/upload-docs", verifyJWT("organization"), uploads.single("file"), uploadDocuments);
+router.post("/upload-docs", verifyJWT, authorizeRoles("owner"), uploads.single("file"), uploadDocuments);
 
-router.get("/my-documents", verifyJWT("organization"), getMyDocuments);
+router.get("/my-documents", verifyJWT,authorizeRoles("owner"), getMyDocuments);
 
-router.delete("/:id", verifyJWT("organization"), deleteDocument);
+router.delete("/:id", verifyJWT, authorizeRoles("owner"), deleteDocument);
 
 module.exports = router;

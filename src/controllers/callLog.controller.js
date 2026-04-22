@@ -23,7 +23,7 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
   } = req.query;
 
   const offset = (page - 1) * limit;
-  const orgId = req.organization?.id || req.employee?.orgId 
+  const orgId = req.user?.orgId || req.user?.id;
 
  
   const validSortColumns = ["createdAt", "duration", "status", "callSid", "to", "from"];
@@ -105,10 +105,11 @@ const deleteCallLog = asyncHandler(async (req,res) => {
     const { id } = req.params
 
     const callLog = await CallLog.findOne({
-        where : {
-            id , orgId : req.organization?.id || req.employee?.orgId 
-        }
-    })
+      where: {
+        id,
+        orgId: req.user?.orgId || req.user?.id,
+      },
+    });
 
     if(!callLog){
         throw new ApiError(400 , "Call log not found or corrupted")

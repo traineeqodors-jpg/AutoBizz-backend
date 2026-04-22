@@ -1,54 +1,16 @@
 const jwt = require("jsonwebtoken");
+
 const { ApiError } = require("../utils/ApiError");
-const {
-  accesTokenVerification,
-  refreshTokenVerfication,
-} = require("../services/authService");
 
-const verifyJWT = (type) => async (req, res, next) => {
+const db = require("../../db/models");
+
+const verifyJWT = async (req, res, next) => {
   const accessToken =
     req.cookies?.accessToken ||
     req.header("Authorization")?.replace("Bearer ", "");
+
   const refreshToken = req.cookies?.refreshToken;
 
-  if (!accessToken && !refreshToken) {
-    return next(new ApiError(401, "No tokens found"));
-  }
-
-  try {
-    const decoded = jwt.decode(accessToken || refreshToken);
-
-    if (!decoded || decoded.type !== type) {
-      throw new ApiError(403, `Access denied!!`);
-    }
-
-    const reqKey = type === "employee" ? "employee" : "organization";
-
-    // 2. Proceed with full verification (DB check + Secret check)
-    if (accessToken) {
-      const user = await accesTokenVerification(accessToken, type);
-      req[reqKey] = user;
-      req[reqKey].type = reqKey;
-
-      return next();
-    }
-
-    if (refreshToken) {
-      const user = await refreshTokenVerfication(refreshToken, type, req, res);
-      req[reqKey] = user;
-      req[reqKey].type = reqKey;
-      return next();
-    }
-  } catch (error) {
-    next(error);
-  }
-};
-
-const allowOwnerOrEmployee = async (req, res, next) => {
-  const accessToken =
-    req.cookies?.accessToken ||
-    req.header("Authorization")?.replace("Bearer ", "");
-  const refreshToken = req.cookies?.refreshToken;
   const token = accessToken || refreshToken;
 
   if (!token) {
@@ -56,37 +18,83 @@ const allowOwnerOrEmployee = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.decode(token);
-    const userType = decoded?.type;
+    const decoded = jwt.verify(
+      token,
 
-    if (userType !== "organization" && userType !== "employee") {
-      throw new ApiError(403, "Invalid token type. Access denied.");
+      accessToken
+        ? process.env.ACCESS_TOKEN_SECRET
+        : process.env.REFRESH_TOKEN_SECRET,
+    );
+
+    console.log(decoded);
+
+    const Model = decoded.type === "employee" ? db.Employee : db.Organization;
+
+    let user = await Model.findByPk(decoded.id);
+
+    if (!user) {
+      throw new ApiError(401, "User not found");
     }
 
-    return verifyJWT(userType)(req, res, next);
-  } catch (error) {
-    next(error);
+    // If refresh token, validate & reissue access token
+
+    if (refreshToken && !accessToken) {
+      if (user.refreshToken !== refreshToken) {
+        throw new ApiError(401, "Invalid refresh token");
+      }
+
+      const newAccessToken = user.generateAccessToken();
+
+      res.cookie("accessToken", newAccessToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+    }
+
+    // Attach unified user object
+    const cleanUser = user.toJSON();
+
+    delete cleanUser.password;
+    delete cleanUser.refreshToken;
+    delete cleanUser.createdAt;
+    delete cleanUser.updatedAt;
+
+    req.user = {
+      ...cleanUser,
+      type: decoded.type,
+    };
+
+    next();
+  } catch (err) {
+    next(new ApiError(401, err.message || "Invalid token"));
   }
 };
 
-const authorizeRoles = (...roles) => {
+const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
-    if (req.organization) {
+    if (!req.user) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    // Organization always allowed (owner)
+
+    if (req.user.type === "organization") {
       return next();
     }
 
-    if (req.employee) {
-      if (roles.includes(req.employee.role)) {
-        return next();
-      }
+    if (!allowedRoles.includes(req.user.role)) {
       throw new ApiError(
         403,
-        `Access denied: Role '${req.employee.role}' is not authorized.`,
+
+        `Access denied: role '${req.user.role}' not allowed`,
       );
     }
 
-    throw new ApiError(401, "Authentication required");
+    next();
   };
 };
 
-module.exports = { verifyJWT, allowOwnerOrEmployee, authorizeRoles };
+module.exports = { verifyJWT, authorizeRoles };

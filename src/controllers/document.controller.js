@@ -20,7 +20,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   const index = req.app.locals.pineconeIndex;
   const io = req.app.get("io");
 
-  const orgId = req.organization.id;
+  const orgId = req.user?.ordId || req.user?.id;
   if (!orgId) {
     throw new ApiError(400, "Organization ID is required to link documents.");
   }
@@ -62,9 +62,9 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 
   upsertFileService({ file: req.file, businessId: orgId, index, uuid })
     .then(() => {
-      console.log("Emitting to:", `user_${req.organization.id}`);
+      console.log("Emitting to:", `user_${req.user.id}`);
 
-      io.to(`user_${req.organization.id}`).emit("document-status", {
+      io.to(`user_${req.user.id}`).emit("document-status", {
         uuid,
         status: "completed",
         message: "Document processed successfully",
@@ -73,7 +73,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     .catch((error) => {
       console.error(error);
 
-      io.to(`user_${req.organization.id}`).emit("document-status", {
+      io.to(`user_${req.user.id}`).emit("document-status", {
         uuid,
         status: "failed",
         message: "Document processing failed",
@@ -82,7 +82,7 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 });
 
 const getMyDocuments = asyncHandler(async (req, res) => {
-  const organizationId = req.organization?.id;
+  const organizationId = req.user?.ordId || req.user?.id;
 
   if (!organizationId) {
     throw new ApiError(
@@ -105,7 +105,7 @@ const getMyDocuments = asyncHandler(async (req, res) => {
 });
 
 const deleteDocument = asyncHandler(async (req, res) => {
-  const organizationId = req.organization?.id;
+  const organizationId = req.user?.ordId || req.user?.id;
   const { id } = req.params;
 
   const index = req.app.locals.pineconeIndex;

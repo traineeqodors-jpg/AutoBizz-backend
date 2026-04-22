@@ -1,9 +1,5 @@
 const express = require("express");
-const {
-  allowOwnerOrEmployee,
-  authorizeRoles,
-  verifyJWT,
-} = require("../middlewares/auth.middleware");
+const { authorizeRoles, verifyJWT } = require("../middlewares/auth.middleware");
 const {
   addLead,
   getAllLeads,
@@ -20,8 +16,8 @@ const router = express.Router();
  */
 router.post(
   "/",
-  allowOwnerOrEmployee,
-  authorizeRoles("sales"),
+  verifyJWT,
+  authorizeRoles("sales", "owner"),
   uploadCsv.single("file"),
   addLead,
 );
@@ -32,8 +28,8 @@ router.post(
  */
 router.get(
   "/",
-  allowOwnerOrEmployee,
-  authorizeRoles("sales"),
+  verifyJWT,
+  authorizeRoles("owner", "sales"),
   validateLeadsQuery,
   getAllLeads,
 );
@@ -45,8 +41,8 @@ router.get(
  */
 router.delete(
   "/:id",
-  allowOwnerOrEmployee,
-  authorizeRoles("sales"),
+  verifyJWT,
+  authorizeRoles( "owner", "sales"),
   deleteLead,
 );
 

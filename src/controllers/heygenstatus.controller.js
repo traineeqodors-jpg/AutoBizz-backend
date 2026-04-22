@@ -33,6 +33,7 @@ const getVideoStatus = asyncHandler(async (req, res) => {
       );
 
       io.emit("video_updated", videoData);
+      
 
       const dir = path.join(__dirname, "videos");
       if (!fs.existsSync(dir)) fs.mkdirSync(dir);

@@ -32,21 +32,6 @@ const generateAccessRefreshToken = async (id) => {
   }
 };
 
-const generateAccessToken = async (id) => {
-  try {
-    const org = await Organization.findByPk(id);
-
-    const accessToken = org.generateAccessToken();
-    return { accessToken };
-  } catch (error) {
-    console.error(error);
-    throw new ApiError(
-      500,
-      "Something went wrong while generating  access token!",
-    );
-  }
-};
-
 // Register Org
 const registerOrg = asyncHandler(async (req, res) => {
   const {
@@ -114,13 +99,12 @@ const registerOrg = asyncHandler(async (req, res) => {
   return res
     .cookie("accessToken", accessToken, {
       ...options,
-      maxAge: 60 * 1000 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 24,
     })
     .cookie("refreshToken", refreshToken, {
       ...options,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     })
-
     .json(new ApiResponse(201, data, "Org registered Successfully"));
 });
 
@@ -169,11 +153,11 @@ const orgLogin = asyncHandler(async (req, res, next) => {
   return res
     .cookie("accessToken", accessToken, {
       ...options,
-      maxAge: 60 * 1000 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 24,
     })
     .cookie("refreshToken", refreshToken, {
       ...options,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     })
     .json(
       new ApiResponse(
@@ -185,7 +169,7 @@ const orgLogin = asyncHandler(async (req, res, next) => {
 });
 
 const editOrg = asyncHandler(async (req, res) => {
-  const orgId = req.organization?.id;
+  const orgId = req.user?.orgId || req.user?.id;
   const org = await Organization.findByPk(orgId);
 
   if (!org) {
@@ -243,74 +227,11 @@ const editOrg = asyncHandler(async (req, res) => {
     );
 });
 
-const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken =
-    req.body?.refreshToken || req.cookies?.refreshToken;
-  console.log(req.cookies?.refreshToken);
-  console.log(incomingRefreshToken);
-
-  if (!incomingRefreshToken) {
-    throw new ApiError(401, "unauthorized request");
-  }
-
-  const decodedToken = jwt.verify(
-    incomingRefreshToken,
-    process.env.REFRESH_TOKEN_SECRET,
-  );
-
-  console.log(decodedToken);
-
-  const org = await Organization.findByPk(decodedToken?.id);
-
-  if (!org) {
-    throw new ApiError(401, "Invalid refresh token");
-  }
-
-  if (incomingRefreshToken !== org?.refreshToken) {
-    throw new ApiError(401, "Refresh token is expired or used");
-  }
-
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
-
-  const { accessToken } = await generateAccessToken(org.id);
-
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .json(new ApiResponse(200, { accessToken }, "Access token refreshed"));
-});
-
-const getCurrentOrgDetails = asyncHandler(async (req, res) => {
-  const org = await Organization.findByPk(req.organization?.id);
-
-  if (!org) {
-    throw new ApiError(400, "No Such Organization Found");
-  }
-
-  const currentOrg = org.toJSON();
-  delete currentOrg.password;
-  delete currentOrg.refreshToken;
-
-  return res.json(new ApiResponse(200, currentOrg, "Organization Detail"));
-});
-
-const getAllOrgs = asyncHandler(async (req, res) => {
-  const data = await Organization.findAll();
-  if (!data) {
-    throw new ApiError(400, "No Org Data Found");
-  }
-
-  res.status(201).json(new ApiResponse(200, data, "Org data"));
-});
-
 // Hadle Google Login
 const handleGoogleToken = asyncHandler(async (req, res) => {
   const { code } = req.body;
 
-  const { id: orgId, email: currentEmail } = req.organization;
+  const { id: orgId, email: currentEmail } = req.user;
 
   if (!code) {
     throw new ApiError(400, "Auth code is required");
@@ -356,10 +277,6 @@ const handleGoogleToken = asyncHandler(async (req, res) => {
 const queryForm = asyncHandler(async (req, res) => {
   const { name, email, subject, message, phone } = req.body;
 
-  if (!name || !email || !subject || !message || !phone) {
-    throw new ApiError(400, "Fields are missing");
-  }
-
   const to = "trainee.qodors@gmail.com";
 
   const response = await sendQueryMail(to, {
@@ -390,7 +307,7 @@ const getAllEmployees = asyncHandler(async (req, res) => {
   const offset = (page - 1) * limit;
 
   const whereCondition = {
-    orgId: req.organization?.id,
+    orgId: req.user?.id,
   };
 
   if (search) {
@@ -440,7 +357,7 @@ const updateEmployee = asyncHandler(async (req, res) => {
   const employee = await Employee.findOne({
     where: {
       id,
-      orgId: req.organization?.id,
+      orgId: req.user?.id,
     },
   });
 
@@ -465,7 +382,7 @@ const deleteEmployee = asyncHandler(async (req, res) => {
   const deletedCount = await Employee.destroy({
     where: {
       id,
-      orgId: req.organization?.id,
+      orgId: req.user?.id,
     },
   });
 
@@ -481,10 +398,7 @@ const deleteEmployee = asyncHandler(async (req, res) => {
 
 module.exports = {
   registerOrg,
-  getAllOrgs,
   orgLogin,
-  refreshAccessToken,
-  getCurrentOrgDetails,
   editOrg,
   handleGoogleToken,
   queryForm,

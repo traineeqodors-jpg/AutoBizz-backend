@@ -8,7 +8,7 @@ const OrganizationDetails = db.OrganizationDetail;
 const Organization = db.Organization;
 
 const getOrganizationDetails = asyncHandler(async (req, res) => {
-  const orgId = req.organization?.id || req.employee?.orgId;
+  const orgId = req.user?.orgId || req.user?.id;
 
   if (!orgId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
@@ -47,7 +47,7 @@ const getOrganizationDetails = asyncHandler(async (req, res) => {
 });
 
 const addOrganizationDetails = asyncHandler(async (req, res) => {
-  const id = req?.organization?.id;
+  const id = req.user?.id;
   if (!id) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
@@ -79,7 +79,7 @@ const addOrganizationDetails = asyncHandler(async (req, res) => {
 });
 
 const editOrganizationDetails = asyncHandler(async (req, res) => {
-  const id = req?.organization?.id;
+  const id = req.user?.id;
   if (!id) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }

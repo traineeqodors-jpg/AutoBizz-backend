@@ -15,7 +15,7 @@ const jwt = require("jsonwebtoken");
 const { sendMeetingConfirmationEmail } = require("../services/emailServices");
 
 const getAllMeetings = asyncHandler(async (req, res) => {
-  const orgId = req.organization?.id || req.employee?.orgId ;
+  const orgId = req.user?.orgId  || req.user?.id ;
 
   const { startDate, endDate, limit = 50, page = 1 } = req.query;
 

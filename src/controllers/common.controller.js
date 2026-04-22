@@ -7,8 +7,8 @@ const Organization = db.Organization;
 const Employee = db.Employee;
 
 const me = asyncHandler(async (req, res) => {
-  const user = req.organization || req.employee;
-  const userType = req.organization ? "Organization" : "Employee";
+  const user = req.user;
+  const userType = req.user?.type;
 
   if (!user) {
     throw new ApiError(401, "User details not found");

@@ -85,7 +85,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
-  const isOwner = req?.organization?.role === "owner";
+  const isOwner = req?.user?.role === "owner";
 
   const { oldPassword, newPassword, confirmPassword } = req.body;
 
@@ -98,9 +98,9 @@ const updatePassword = asyncHandler(async (req, res) => {
   console.log(isOwner);
 
   if (isOwner) {
-    user = await Organization.findByPk(req.organization?.id);
+    user = await Organization.findByPk(req.user?.id);
   } else {
-    user = await Employee.findByPk(req.employee?.id);
+    user = await Employee.findByPk(req.user?.id);
   }
 
   if (!user) throw new ApiError(400, "User Not Found");

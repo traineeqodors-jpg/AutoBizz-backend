@@ -8,6 +8,7 @@ const db = require("../../db/models");
 const { default: axios } = require("axios");
 const path = require("path");
 const { ApiError } = require("../utils/ApiError");
+const { generateHeygenAvatarVideo } = require("../services/sop.services");
 const Sop = db.Sop;
 
 const testDownload = asyncHandler(async (req, res) => {
@@ -125,36 +126,16 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 
   const data = await Sop.create(newSop);
 
-  const response = await axios.post(
-    "https://api.heygen.com/v2/video/generate",
-    {
-      video_inputs: [
-        {
-          character: {
-            type: "avatar",
-            avatar_id: avatar_id,
-            avatar_style: "normal",
-          },
-          voice: {
-            type: "text",
-            input_text: script,
-            voice_id: voice_id,
-          },
-        },
-      ],
-      dimension: { width: 1280, height: 720 },
-      callback_url: process.env.BASE_URL,
-      callback_id: `${orgId}_sop_video`,
-    },
-    {
-      headers: {
-        "X-Api-Key": process.env.HEYGEN_API_KEY,
-        "Content-Type": "application/json",
-      },
-    },
-  );
+  const videoGenerationFields = {
+    avatar_id,
+    script,
+    voice_id,
+    orgId,
+  };
 
-  const videoId = response.data.data.video_id;
+  const response = await generateHeygenAvatarVideo(videoGenerationFields);
+
+  const videoId = response?.video_id;
   data.videoId = videoId;
   await data.save();
 
@@ -168,9 +149,8 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  const businessId = req?.organization?.id || req.employee?.orgId;
-  console.log(req.organization, "req.organization");
-  console.log(req.employee, "req.employee");
+  const businessId = req.user?.orgId || req?.user?.id ;
+
 
   if (!businessId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
@@ -191,7 +171,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  const businessId = req?.organization?.id;
+  const businessId = req?.user?.id;
 
   if (!businessId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
