@@ -15,6 +15,7 @@ const {
   getAllEmployees,
   updateEmployee,
   deleteEmployee,
+  updateOnboarding,
 } = require("../controllers/org.controller.js");
 
 const registerSchema = require("../zodSchema/registerSchema.js");
@@ -43,6 +44,9 @@ router.put(
 
 // Google Login
 router.post("/googleToken", verifyJWT, handleGoogleToken);
+
+// Update OnBoarding
+router.post("/updateonboard", verifyJWT, updateOnboarding);
 
 //Employee
 

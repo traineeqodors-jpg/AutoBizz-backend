@@ -1,17 +1,20 @@
-"use strict";
+const fs = require("fs");
+const crypto = require("crypto");
+
+const twilio = require("twilio");
+const csv = require("csv-parser");
+const { Op } = require("sequelize");
+
 const db = require("../../db/models");
+
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 
-const fs = require("fs");
-const crypto = require("crypto");
-const csv = require("csv-parser");
-const { Op } = require("sequelize");
-
-const twilio = require("twilio");
 const { calculateLeadScore } = require("../services/rag.services");
-const { default: axios } = require("axios");
+const {
+  startQualificationBatch,
+} = require("../services/startQualificationBatch");
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -22,6 +25,7 @@ const BASE_URL = process.env.BASE_URL;
 const Lead = db.Lead;
 
 const addLead = asyncHandler(async (req, res) => {
+  // Validate file upload
   if (!req.file || !req.file.originalname.toLowerCase().endsWith(".csv")) {
     if (req.file) fs.unlinkSync(req.file.path);
     throw new ApiError(400, "Please upload a valid CSV file.");
@@ -31,22 +35,27 @@ const addLead = asyncHandler(async (req, res) => {
   const filePath = req.file.path;
   const leads = [];
 
-  const fileBuffer = fs.readFileSync(filePath);
+  // avoid blocking event loop
+  const fileBuffer = await fs.promises.readFile(filePath);
+
+  // File hash for deduplication
   const fileHash = crypto.createHash("md5").update(fileBuffer).digest("hex");
 
+  // Binary file check
   const isBinary = fileBuffer.slice(0, 100).some((byte) => byte === 0);
   if (isBinary) {
     fs.unlinkSync(filePath);
     throw new ApiError(
       400,
-      "Invalid file content. The file appears to be a binary, not a CSV.",
+      "Invalid file content. The file appears to be binary, not CSV.",
     );
   }
 
+  // Duplicate file check
   const duplicateFile = await Lead.findOne({
     where: {
       orgId: businessId,
-      "metadata.file_hash": fileHash,
+      "metadata.file_hash": fileHash, // NOTE: better if this becomes a DB column
     },
   });
 
@@ -55,30 +64,43 @@ const addLead = asyncHandler(async (req, res) => {
     throw new ApiError(400, "This file content has already been uploaded.");
   }
 
+  // safer CSV stream handling
   const parsePromise = new Promise((resolve, reject) => {
     let isFirstRow = true;
-    const requiredHeaders = ["Lead Owner", "Email 1", "Phone 1", "Company"];
 
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on("data", (row) => {
+    // normalize headers
+    const requiredHeaders = ["lead owner", "email 1", "phone 1", "company"];
+
+    const stream = fs.createReadStream(filePath).pipe(csv());
+
+    stream.on("data", (row) => {
+      try {
+        // Normalize headers for comparison
         if (isFirstRow) {
-          const rowHeaders = Object.keys(row);
+          const rowHeaders = Object.keys(row).map((h) =>
+            h.trim().toLowerCase(),
+          );
+
           const hasAllHeaders = requiredHeaders.every((h) =>
             rowHeaders.includes(h),
           );
+
           if (!hasAllHeaders) {
-            reject(
+            // stop stream
+            stream.destroy(
               new ApiError(
                 400,
                 `CSV Header mismatch. Required: ${requiredHeaders.join(", ")}`,
               ),
             );
-
-            fs.unlinkSync(filePath);
+            return;
           }
+
           isFirstRow = false;
         }
+
+        // skip invalid rows (prevents bad DB data)
+        if (!row["Email 1"] || !row["Phone 1"]) return;
 
         leads.push({
           orgId: businessId,
@@ -96,16 +118,28 @@ const addLead = asyncHandler(async (req, res) => {
             original_filename: req.file.originalname,
           },
         });
-      })
-      .on("end", resolve)
-      .on("error", (error) => reject(error));
+      } catch (err) {
+        stream.destroy(err);
+      }
+    });
+
+    stream.on("error", reject);
+    stream.on("end", resolve);
   });
 
-  await parsePromise;
-  fs.unlinkSync(filePath);
+  //ensure file cleanup always happens
+  try {
+    await parsePromise;
+  } finally {
+    fs.unlinkSync(filePath); // always cleanup
+  }
 
-  if (leads.length === 0) throw new ApiError(400, "CSV is empty.");
+  // Empty CSV check
+  if (leads.length === 0) {
+    throw new ApiError(400, "CSV is empty or invalid.");
+  }
 
+  // safer bulk insert
   const savedLeads = await Lead.bulkCreate(leads, {
     conflictAttributes: ["email"],
     updateOnDuplicate: [
@@ -119,27 +153,29 @@ const addLead = asyncHandler(async (req, res) => {
   });
 
   if (!savedLeads) {
-    throw new ApiError(400, "Cannot Insert leads in bulk");
+    throw new ApiError(400, "Cannot insert leads in bulk");
   }
 
   const leadIds = savedLeads.map((l) => l.id);
 
-  axios
-    .post(`${process.env.BACKEND_URL}/api/voice/batch-qualify`, {
-      leadIds,
-      orgId: businessId,
-    })
-    .catch((err) => console.error("Background Batch Trigger Failed:", err));
+  // io injection
+  const io = req.app.get("io");
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { count: leads.length },
-        "Import successful. AI processing started.",
-      ),
-    );
+  // Background job trigger
+  startQualificationBatch(leadIds, businessId, io, client, BASE_URL).catch(
+    (err) => console.error("Background Batch Trigger Failed:", err),
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        count: leads.length,
+        inserted: savedLeads.length,
+      },
+      "Import successful. AI processing started.",
+    ),
+  );
 });
 
 const getAllLeads = asyncHandler(async (req, res) => {
@@ -242,89 +278,6 @@ const deleteLead = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, "Lead deleted successfully"));
 });
 
-const startQualificationBatch = asyncHandler(async (req, res) => {
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
-
-  const { leadIds, orgId } = req.body;
-  const io = req.app.get("io");
-  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-
-  const socketDelay = () => new Promise((resolve) => setTimeout(resolve, 2000));
-
-  const leads = await db.Lead.findAll({ where: { id: leadIds } });
-
-  res.json({ message: "Batch processing started" });
-
-  for (let i = 0; i < leads.length; i++) {
-    const lead = leads[i];
-
-    if (!lead.phone || !phoneRegex.test(lead.phone.replace(/\s/g, ""))) {
-      console.error(`Skipping ${lead.name}: Malformed number ${lead.phone}`);
-      io.emit(`batch-update-${orgId}`, {
-        message: `Skipping ${lead.name}: Invalid format`,
-        status: "warning",
-      });
-      await socketDelay();
-      continue;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 6000));
-
-    try {
-      const lookup = await client.lookups.v2.phoneNumbers(lead.phone).fetch();
-
-      if (!lookup.valid) {
-        throw new Error(
-          "Number is technically valid but not reachable/active.",
-        );
-      }
-
-      await client.calls.create({
-        to: lead.phone,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        url: `${BASE_URL}/api/voice?orgId=${orgId}&leadId=${lead.id}`,
-        method: "POST",
-        statusCallback: `${BASE_URL}/api/voice/callback?orgId=${orgId}&leadId=${lead.id}`,
-        statusCallbackEvent: ["completed"],
-      });
-
-      io.emit(`batch-update-${orgId}`, {
-        message: `Calling ${lead.name}...`,
-        current: i + 1,
-        total: leads.length,
-        status: "processing",
-      });
-      await socketDelay();
-
-      console.log("Working of calls");
-    } catch (err) {
-      let errorMessage = err.message;
-      if (err.code === 21211)
-        errorMessage = "Invalid 'To' Phone Number (Twilio Check).";
-      if (err.code === 21614)
-        errorMessage = "To number is not a valid mobile/landline.";
-      if (err.code === 21408)
-        errorMessage =
-          "Permission denied for this country (check Geo-Permissions).";
-
-      console.error(`Twilio Error [${lead.name}]:`, errorMessage);
-
-      io.emit(`batch-update-${orgId}`, {
-        message: `Error calling ${lead.name}: ${errorMessage}`,
-        status: "error",
-      });
-      await socketDelay();
-    }
-  }
-
-  io.emit(`batch-update-${orgId}`, {
-    message: "Batch qualification finished!",
-    status: "success",
-  });
-});
-
 const finalizeCallAndScore = asyncHandler(async (req, res) => {
   const { leadId, orgId } = req.query;
   const { CallStatus, CallDuration, CallSid } = req.body;
@@ -380,6 +333,5 @@ module.exports = {
   addLead,
   getAllLeads,
   deleteLead,
-  startQualificationBatch,
   finalizeCallAndScore,
 };

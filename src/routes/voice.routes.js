@@ -4,10 +4,7 @@ const {
   initiateCall,
   handleAIProcessing,
 } = require("../controllers/voice.controller");
-const {
-  startQualificationBatch,
-  finalizeCallAndScore,
-} = require("../controllers/lead.controller");
+const { finalizeCallAndScore } = require("../controllers/lead.controller");
 
 // Initial call entry
 router.post("/", initiateCall);
@@ -16,7 +13,5 @@ router.post("/", initiateCall);
 router.post("/handle-ai", handleAIProcessing);
 
 router.post("/callback", finalizeCallAndScore);
-
-router.post("/batch-qualify", startQualificationBatch);
 
 module.exports = router;

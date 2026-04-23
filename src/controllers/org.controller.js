@@ -177,24 +177,13 @@ const editOrg = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Organization not found");
   }
 
-  const {
-    firstName,
-    lastName,
-    email,
-    country,
-    businessName,
-    businessSize,
-    phoneNumber,
-  } = req.body;
+  const { firstName, lastName, businessName, businessSize } = req.body;
 
   const updateData = {
     firstName,
     lastName,
-    email,
-    country,
     businessName,
     businessSize,
-    phoneNumber,
   };
 
   if (req.file) {
@@ -400,6 +389,55 @@ const deleteEmployee = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, {}, "Employee deleted successfully"));
 });
 
+// Update onBoarding Status
+const updateOnboarding = asyncHandler(async (req, res) => {
+  const { tourKey, status, lastStep } = req.body;
+
+  const orgId = req.user?.id;
+
+  // Basic Validation
+  if (!tourKey) {
+    throw new ApiError(400, "tourKey is required (e.g., 'dashboard', 'sop')");
+  }
+
+  // Find the Organization
+  const org = await Organization.findByPk(orgId);
+  if (!org) {
+    throw new ApiError(404, "Organization not found");
+  }
+
+  // spread the current onboarding object to keep other tour data safe
+  const currentOnboarding = org.onboarding || {};
+
+  // Update the JSONB object
+  const updatedOnboarding = {
+    ...currentOnboarding,
+    [tourKey]: {
+      status: status || currentOnboarding[tourKey]?.status || "pending",
+      lastStep:
+        lastStep !== undefined
+          ? lastStep
+          : currentOnboarding[tourKey]?.lastStep || 0,
+    },
+  };
+
+  // CRITICAL for Sequelize JSONB: Tell it the field has changed
+  org.onboarding = updatedOnboarding;
+  org.changed("onboarding", true);
+
+  await org.save();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        org.onboarding,
+        `Onboarding for ${tourKey} updated successfully`,
+      ),
+    );
+});
+
 module.exports = {
   registerOrg,
   orgLogin,
@@ -409,4 +447,5 @@ module.exports = {
   getAllEmployees,
   updateEmployee,
   deleteEmployee,
+  updateOnboarding,
 };

@@ -108,8 +108,8 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: {
           is: {
-            args: /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/,
-            msg: "Password must be at least 8 characters long and include one number and one special character",
+            args: /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{7,}$/,
+            msg: "Password must be at least 7 characters long and include one number and one special character",
           },
         },
       },
@@ -146,6 +146,16 @@ module.exports = (sequelize, DataTypes) => {
             args: [["admin", "owner", "user"]],
             msg: "Invalid role selected",
           },
+        },
+      },
+      onboarding: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: {
+          dashboard: { status: "pending", lastStep: 0 },
+          myDocuments: { status: "pending", lastStep: 0 },
+          sop: { status: "pending", lastStep: 0 },
+          leads: { status: "pending", lastStep: 0 },
         },
       },
     },
