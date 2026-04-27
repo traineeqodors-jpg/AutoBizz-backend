@@ -195,6 +195,13 @@ const getAllLeads = asyncHandler(async (req, res) => {
 
   const businessId = req.user?.orgId || req.user?.id;
 
+  // detect filters
+  const hasFilters = !!(search || status || minScore || startDate || endDate);
+
+  const baseCondition = {
+    orgId: businessId,
+  };
+
   const validSortColumns = [
     "createdAt",
     "confidence_score",
@@ -233,6 +240,11 @@ const getAllLeads = asyncHandler(async (req, res) => {
     }
   }
 
+  // TOTAL WITHOUT FILTERS
+  const totalUnfilteredCount = await Lead.count({
+    where: baseCondition,
+  });
+
   const { count, rows } = await Lead.findAndCountAll({
     where: queryConditions,
     limit: parseInt(limit),
@@ -254,6 +266,10 @@ const getAllLeads = asyncHandler(async (req, res) => {
           currentPage: parseInt(page),
           limit: parseInt(limit),
         },
+        hasFilters,
+        totalUnfilteredCount,
+        hasAnyData: totalUnfilteredCount > 0,
+
         filters: { search, status, minScore, startDate, endDate },
         activeSort: { field: sortField, order: sortOrder },
       },

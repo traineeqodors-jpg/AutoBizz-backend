@@ -67,6 +67,11 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
   // hasFilters logic
   const hasFilters = !!(search || status || startDate || endDate);
 
+  // total count WITHOUT filters
+  const totalUnfilteredCount = await CallLog.count({
+    where: { orgId },
+  });
+
   const { count, rows } = await CallLog.findAndCountAll({
     where: queryConditions,
     limit: parseInt(limit),
@@ -86,6 +91,8 @@ const getAllCallLogs = asyncHandler(async (req, res) => {
         },
         hasFilters,
         filters: { search, status, startDate, endDate },
+        totalUnfilteredCount,
+        hasAnyData: totalUnfilteredCount > 0,
       },
       "Call Logs retrieved successfully",
     ),

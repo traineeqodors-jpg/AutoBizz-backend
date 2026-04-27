@@ -46,7 +46,7 @@ router.put(
 router.post("/googleToken", verifyJWT, handleGoogleToken);
 
 // Update OnBoarding
-router.post("/updateonboard", verifyJWT, updateOnboarding);
+router.put("/updateonboard", verifyJWT, updateOnboarding);
 
 //Employee
 

@@ -292,11 +292,13 @@ const getAllEmployees = asyncHandler(async (req, res) => {
 
   const offset = (page - 1) * limit;
 
+  const orgId = req.user?.id;
+
   const hasFilters = !!(search || role || isVerified);
 
-  const whereCondition = {
-    orgId: req.user?.id,
-  };
+  const baseCondition = { orgId };
+
+  const whereCondition = { ...baseCondition };
 
   if (search) {
     whereCondition[Op.or] = [
@@ -313,6 +315,11 @@ const getAllEmployees = asyncHandler(async (req, res) => {
   if (isVerified !== undefined) {
     whereCondition.isVerified = isVerified === "true";
   }
+
+  // Total data WITHOUT filters
+  const totalUnfilteredCount = await Employee.count({
+    where: baseCondition,
+  });
 
   const { count, rows: employees } = await Employee.findAndCountAll({
     where: whereCondition,
@@ -334,6 +341,8 @@ const getAllEmployees = asyncHandler(async (req, res) => {
           limit: parseInt(limit),
         },
         hasFilters,
+        totalUnfilteredCount,
+        hasAnyData: totalUnfilteredCount > 0,
       },
       "Employee Details Fetched",
     ),
