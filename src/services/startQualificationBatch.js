@@ -10,6 +10,7 @@ const startQualificationBatch = async (
 ) => {
   const phoneRegex = /^\+?[1-9]\d{1,14}$/;
 
+  // simple delay helper (prevents rate limit issues)
   const socketDelay = () => new Promise((resolve) => setTimeout(resolve, 2000));
 
   const leads = await Lead.findAll({ where: { id: leadIds } });
@@ -17,6 +18,7 @@ const startQualificationBatch = async (
   for (let i = 0; i < leads.length; i++) {
     const lead = leads[i];
 
+    // Validate phone number
     if (!lead.phone || !phoneRegex.test(lead.phone.replace(/\s/g, ""))) {
       console.error(`Skipping ${lead.name}: Malformed number ${lead.phone}`);
 
@@ -24,14 +26,14 @@ const startQualificationBatch = async (
         message: `Skipping ${lead.name}: Invalid format`,
         status: "warning",
       });
-
-      await socketDelay();
+      await socketDelay(2000);
       continue;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 6000));
+    await socketDelay(4000);
 
     try {
+      // Twilio lookup validation
       const lookup = await client.lookups.v2.phoneNumbers(lead.phone).fetch();
 
       if (!lookup.valid) {
@@ -40,6 +42,7 @@ const startQualificationBatch = async (
         );
       }
 
+      // Initiate call
       await client.calls.create({
         to: lead.phone,
         from: process.env.TWILIO_PHONE_NUMBER,
@@ -55,7 +58,8 @@ const startQualificationBatch = async (
         total: leads.length,
         status: "processing",
       });
-      await socketDelay();
+
+      await socketDelay(2000);
 
       console.log("Working of calls");
     } catch (err) {
@@ -75,7 +79,7 @@ const startQualificationBatch = async (
         status: "error",
       });
 
-      await socketDelay();
+      await socketDelay(2000);
     }
   }
 

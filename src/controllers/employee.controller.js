@@ -49,7 +49,7 @@ const createEmployee = asyncHandler(async (req, res) => {
   try {
     await sendInvitationEmail(email, firstName, setupUrl);
   } catch (err) {
-    console.error("Email failed to send:", err);
+    console.error("Failed to send Email:", err);
   }
 
   const employeeData = employee.toJSON();

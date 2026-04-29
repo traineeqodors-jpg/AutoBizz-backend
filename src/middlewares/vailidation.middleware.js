@@ -3,6 +3,11 @@ const { query, validationResult } = require("express-validator");
 
 const validate = (schema) => async (req, res, next) => {
   try {
+    // Skip validation if CSV file is uploaded
+    if (req.file) {
+      return next();
+    }
+
     if (!req.body) {
       throw new ApiError(400, "Request Body is Empty");
     }

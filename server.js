@@ -8,6 +8,7 @@ const { Server } = require("socket.io");
 
 const errorHandler = require("./src/middlewares/error.middleware.js");
 
+const testRouter = require("./src/routes/testRoutes.js");
 const orgRouter = require("./src/routes/org.routes.js");
 const passwordResetRouter = require("./src/routes/passwordReset.routes.js");
 const documentRouter = require("./src/routes/document.routes.js");
@@ -111,6 +112,7 @@ app.use("/api/meeting", meetingRouter);
 app.use("/api/employee", employeeRouter);
 app.use("/webhooks/heygen", webhooksHeygen);
 app.use("/api/user", commonRouter);
+app.use("/api/test", testRouter);
 
 app.use(errorHandler);
 

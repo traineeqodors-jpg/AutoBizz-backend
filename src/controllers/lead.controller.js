@@ -24,14 +24,56 @@ const BASE_URL = process.env.BASE_URL;
 
 const Lead = db.Lead;
 
+// Add Leads
 const addLead = asyncHandler(async (req, res) => {
+  const businessId = req.user?.orgId || req.user?.id;
+
+  // MANUAL LEAD ADD
+  if (!req.file) {
+    const { name, email, phone, companyName } = req.body;
+
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check existing lead
+    const existingLead = await Lead.findOne({
+      where: {
+        orgId: businessId,
+        email: normalizedEmail,
+      },
+    });
+
+    if (existingLead) {
+      throw new ApiError(400, "Leads with this email already exists!!");
+    }
+
+    let lead = await Lead.create({
+      orgId: businessId,
+      name: name || "Unknown",
+      email: normalizedEmail,
+      phone,
+      company: companyName,
+      status: "new",
+      confidence_score: 0,
+      metadata: {
+        imported_at: new Date(),
+        source: "Manual Entry",
+        original_notes: "",
+      },
+    });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, lead, "Lead created successfully."));
+  }
+
+  // CSV UPLOAD FLOW
   // Validate file upload
-  if (!req.file || !req.file.originalname.toLowerCase().endsWith(".csv")) {
+  if (!req.file.originalname.toLowerCase().endsWith(".csv")) {
     if (req.file) fs.unlinkSync(req.file.path);
     throw new ApiError(400, "Please upload a valid CSV file.");
   }
 
-  const businessId = req.user?.orgId || req.user?.id;
   const filePath = req.file.path;
   const leads = [];
 
@@ -156,15 +198,7 @@ const addLead = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Cannot insert leads in bulk");
   }
 
-  const leadIds = savedLeads.map((l) => l.id);
-
-  // io injection
-  const io = req.app.get("io");
-
-  // Background job trigger
-  startQualificationBatch(leadIds, businessId, io, client, BASE_URL).catch(
-    (err) => console.error("Background Batch Trigger Failed:", err),
-  );
+  // const leadIds = savedLeads.map((l) => l.id);
 
   return res.status(200).json(
     new ApiResponse(
@@ -298,51 +332,144 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
   const { leadId, orgId } = req.query;
   const { CallStatus, CallDuration, CallSid } = req.body;
 
+  // respond immediately (Twilio requirement)
   res.sendStatus(200);
 
-  (async () => {
-    try {
-      await db.CallLog.update(
-        {
-          status: CallStatus,
-          duration: CallDuration ? parseInt(CallDuration) : 0,
-        },
-        { where: { callSid: CallSid } },
-      );
+  // background processing (non-blocking)
+  try {
+    // Update call status
+    await db.CallLog.update(
+      {
+        status: CallStatus,
+        duration: CallDuration ? parseInt(CallDuration) : 0,
+      },
+      { where: { callSid: CallSid } },
+    );
 
-      const logs = await db.CallLog.findAll({
-        where: { callSid: CallSid },
-        order: [["createdAt", "ASC"]],
-      });
+    // Fetch full call logs
+    const logs = await db.CallLog.findAll({
+      where: { callSid: CallSid },
+      order: [["createdAt", "ASC"]],
+    });
 
-      if (!logs || logs.length === 0) return;
+    // Build clean transcript
+    const transcript = logs
+      .map((l) => {
+        if (l.role === "AI") return `Agent: ${l.transcript}`;
+        return `User: ${l.transcript}`;
+      })
+      .join("\n");
+    if (!logs.length) return;
 
-      const transcript = logs.map((l) => l.transcript || l.message).join("\n");
+    // Run AI scoring
+    const scoringResult = await calculateLeadScore(transcript);
 
-      const scoringResult = await calculateLeadScore(transcript);
+    let score = Number(scoringResult?.score || 10);
+    if (isNaN(score)) score = 10;
 
-      if (!scoringResult) {
-        throw new ApiError(400, "Error while Generating Score of Lead");
-      }
+    score = Math.round(score);
 
-      let leadScore = Number(scoringResult?.score);
-      if (isNaN(leadScore)) leadScore = 10;
-      leadScore = Math.round(leadScore);
+    // Determine lead status
+    let status = "cold";
 
-      await db.Lead.update(
-        {
-          confidence_score: leadScore,
-          status: leadScore > 70 ? "warm" : "contacted",
-        },
-        { where: { id: leadId }, individualHooks: true },
-      );
+    if (score >= 80) status = "hot";
+    else if (score >= 60) status = "warm";
+    else if (score >= 40) status = "contacted";
 
-      const io = req.app.get("io");
-      io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
-    } catch (error) {
-      console.error(" Background Scoring Failed:", error.message);
-    }
-  })();
+    // Update lead
+    await db.Lead.update(
+      {
+        confidence_score: score,
+        status,
+      },
+      { where: { id: leadId } },
+    );
+
+    // Emit realtime update
+    const io = req.app.get("io");
+    io.emit(`lead-scored-${orgId}`, { leadId, score });
+  } catch (error) {}
+
+  // (async () => {
+  //   try {
+  //     await db.CallLog.update(
+  //       {
+  //         status: CallStatus,
+  //         duration: CallDuration ? parseInt(CallDuration) : 0,
+  //       },
+  //       { where: { callSid: CallSid } },
+  //     );
+
+  //     const logs = await db.CallLog.findAll({
+  //       where: { callSid: CallSid },
+  //       order: [["createdAt", "ASC"]],
+  //     });
+
+  //     if (!logs || logs.length === 0) return;
+
+  //     const transcript = logs.map((l) => l.transcript || l.message).join("\n");
+
+  //     const scoringResult = await calculateLeadScore(transcript);
+
+  //     if (!scoringResult) {
+  //       throw new ApiError(400, "Error while Generating Score of Lead");
+  //     }
+
+  //     let leadScore = Number(scoringResult?.score);
+  //     if (isNaN(leadScore)) leadScore = 10;
+  //     leadScore = Math.round(leadScore);
+
+  //     await db.Lead.update(
+  //       {
+  //         confidence_score: leadScore,
+  //         status: leadScore > 70 ? "warm" : "contacted",
+  //       },
+  //       { where: { id: leadId }, individualHooks: true },
+  //     );
+
+  //     const io = req.app.get("io");
+  //     io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
+  //   } catch (error) {
+  //     console.error(" Background Scoring Failed:", error.message);
+  //   }
+  // })();
+});
+
+const callSelectedLead = asyncHandler(async (req, res) => {
+  const { leadIds } = req.body;
+
+  const orgId = req.user?.orgId || req.user?.id;
+
+  // io injection
+  const io = req.app.get("io");
+
+  // validation
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    throw new ApiError(400, "leadIds must be a non-empty array");
+  }
+
+  // ensure leads belong to this org
+  const leads = await Lead.findAll({
+    where: {
+      id: leadIds,
+      orgId,
+    },
+  });
+
+  if (leads.length === 0) {
+    throw new ApiError(404, "No valid leads found");
+  }
+
+  const validLeadIds = leads.map((l) => l.id);
+
+  // Background job trigger
+  startQualificationBatch(validLeadIds, orgId, io, client, BASE_URL).catch(
+    (err) => console.error("Single Call Failed :", err),
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Call process started successfully"));
 });
 
 module.exports = {
@@ -350,4 +477,5 @@ module.exports = {
   getAllLeads,
   deleteLead,
   finalizeCallAndScore,
+  callSelectedLead,
 };

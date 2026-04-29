@@ -4,9 +4,14 @@ const {
   addLead,
   getAllLeads,
   deleteLead,
+  callSelectedLead,
 } = require("../controllers/lead.controller");
 const { uploadCsv } = require("../utils/multer");
-const { validateLeadsQuery } = require("../middlewares/vailidation.middleware");
+const {
+  validateLeadsQuery,
+  validate,
+} = require("../middlewares/vailidation.middleware");
+const { leadSchema } = require("../zodSchema/leadSchema");
 
 const router = express.Router();
 
@@ -19,6 +24,7 @@ router.post(
   verifyJWT,
   authorizeRoles("sales", "owner"),
   uploadCsv.single("file"),
+  validate(leadSchema),
   addLead,
 );
 
@@ -34,16 +40,18 @@ router.get(
   getAllLeads,
 );
 
+router.post(
+  "/call",
+  verifyJWT,
+  authorizeRoles("owner", "sales"),
+  callSelectedLead,
+);
+
 /**
  * CASE 3: Deleting a Lead
  * Accessible by: ONLY the Owner
  * (If you want 'admin' employees to delete too, change to authorizeRoles("admin"))
  */
-router.delete(
-  "/:id",
-  verifyJWT,
-  authorizeRoles( "owner", "sales"),
-  deleteLead,
-);
+router.delete("/:id", verifyJWT, authorizeRoles("owner", "sales"), deleteLead);
 
 module.exports = router;

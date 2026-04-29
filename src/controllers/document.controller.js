@@ -10,6 +10,8 @@ const fs = require("fs").promises;
 const Document = db.Document;
 
 const uploadDocuments = asyncHandler(async (req, res) => {
+  console.log(req.file);
+
   if (!req.file) {
     throw new ApiError(
       400,
@@ -110,6 +112,10 @@ const deleteDocument = asyncHandler(async (req, res) => {
 
   const index = req.app.locals.pineconeIndex;
 
+  if (!id) {
+    throw new ApiError(401, "Document ID missing");
+  }
+
   if (!organizationId) {
     throw new ApiError(401, "Unauthorized: Organization ID missing");
   }
@@ -117,8 +123,6 @@ const deleteDocument = asyncHandler(async (req, res) => {
   const document = await Document.findOne({
     where: { id, orgId: organizationId },
   });
-
-  console.log(document.pineconeId);
 
   if (!document) {
     throw new ApiError(404, "Document not found or access denied");
