@@ -58,7 +58,7 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
   try {
     // Embedding
     const embeddedQuery = await genAI.models.embedContent({
-      model: "gemini-embedding-2",
+      model: process.env.EMBEDDING_MODEL,
       contents: query,
       config: {
         outputDimensionality: 1536,
@@ -112,6 +112,8 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
       memory = "No prior conversation.";
     }
 
+    console.log(contexts);
+
     const systemPrompt = `
     You are a business AI assistant for a SaaS automation platform.
 
@@ -128,12 +130,10 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     ========================
     OUTPUT FORMAT (STRICT)
     ========================
-    - Always respond in TWO parts:
-      1. Answer (1–2 short sentences)
-      2. Follow-up question (1 sentence)
-
+    - Maximum 2 sentences total
+    - If the query is clear → answer + follow-up question
+    - If unclear → only ask a clarification question
     - The follow-up question MUST always be present
-    - Put the question on a new line
     - Do NOT skip the question
 
     ========================
@@ -145,6 +145,7 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     - No numbering
     - No special symbols (*, #, etc.)
     - Keep tone natural and conversational
+    - Do not add line break in response
 
     ========================
     FOLLOW-UP LOGIC
@@ -154,11 +155,25 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     - If unsure → ask a clarifying question
 
     ========================
+    CONFIRMATION HANDLING
+    ========================
+    - If user responds with confirmation (yes, sure, okay, go ahead):
+      → Continue the previous flow
+      → Do NOT ask the same question again
+      → Move the conversation forward
+
+    ========================
     CONVERSATION BEHAVIOR
     ========================
     - Do not repeat previous answers
     - Build on the conversation naturally
     - Keep responses short and engaging
+
+    ========================
+    COMPRESSION RULE
+    ========================
+    - Always prefer shorter responses over detailed ones
+    - Use simple, direct language
 
     ========================
     MEMORY RULES
@@ -167,6 +182,14 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     - Do not repeat previous answers
     - Answer based on what has already been discussed
     - If a question was already asked, do not ask it again
+
+    ========================
+    INVALID INPUT HANDLING
+    ========================
+    - If user input is unclear, random, or meaningless:
+      → Do NOT attempt to answer
+      → Respond with a simple clarification question
+      → Do NOT repeat previous responses
 
     ========================
     GOAL
@@ -212,6 +235,7 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     cleanContent = cleanContent
       .replace(/^(Response|Answer|Assistant):\s*/i, "")
       .replace(/\*\*/g, "")
+      .replace(/\n+/g, " ")
       .trim();
 
     return cleanContent;
@@ -244,6 +268,11 @@ Signals:
 - Questions about process = MEDIUM
 - Casual chat = LOW
 
+IMPORTANT:
+- Focus more on RECENT messages than older ones
+- Ignore irrelevant or random messages
+- Detect buying intent even if earlier conversation was noisy
+
 Return only number.
 `;
 
@@ -266,7 +295,7 @@ Return only number.
 
     console.log("RAW SCORE RESPONSE:", text);
 
-    // 🔥 HARD CLEANING (VERY IMPORTANT)
+    // HARD CLEANING (VERY IMPORTANT)
     text = text.replace(/[^0-9]/g, ""); // keep only numbers
 
     let score = parseInt(text, 10);

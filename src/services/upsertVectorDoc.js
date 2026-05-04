@@ -36,7 +36,7 @@ const upsertFileService = async ({ file, businessId, index, uuid }) => {
     const embeddings = await Promise.all(
       chunks.map(async (chunk) => {
         const res = await genAI.models.embedContent({
-          model: "gemini-embedding-2",
+          model: process.env.EMBEDDING_MODEL,
           contents: chunk,
           config: {
             outputDimensionality: 1536,
