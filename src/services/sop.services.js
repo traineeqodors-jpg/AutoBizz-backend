@@ -2,6 +2,8 @@ const { default: axios } = require("axios");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { ApiError } = require("../utils/ApiError");
 const { uploadVideo } = require("./cloudinary.services");
+const db = require("../../db/models");
+const Sop = db.Sop;
 
 const generateHeygenAvatarVideo = async (videoGenerationInputs) => {
   try {

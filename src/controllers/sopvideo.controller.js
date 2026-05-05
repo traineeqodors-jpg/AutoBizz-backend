@@ -18,6 +18,7 @@ const { OpenRouter } = require("@openrouter/sdk");
 const { GoogleGenAI } = require("@google/genai");
 const { createTTSAudio } = require("../services/elevenlabs.services");
 const { sendAudioToSimli } = require("../services/sendAudioToSimli");
+const { cloudinary } = require("../config/cloudinary");
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API,
@@ -278,6 +279,18 @@ const deleteVideo = asyncHandler(async (req, res) => {
       404,
       "Video not found or you do not have permission to delete it",
     );
+  }
+
+  try {
+    if (video.videoUrl && video.videoUrl !== "failed") {
+      const publicId = video.videoId;
+
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: "video",
+      });
+    }
+  } catch (err) {
+    console.error("Cloudinary delete error:", err.message);
   }
 
   await video.destroy();
