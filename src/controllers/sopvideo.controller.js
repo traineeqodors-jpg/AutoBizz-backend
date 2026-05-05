@@ -8,11 +8,16 @@ const db = require("../../db/models");
 const { default: axios } = require("axios");
 const path = require("path");
 const { ApiError } = require("../utils/ApiError");
-const { generateHeygenAvatarVideo } = require("../services/sop.services");
+const {
+  generateHeygenAvatarVideo,
+  checkVideoReady,
+} = require("../services/sop.services");
 const Sop = db.Sop;
 
 const { OpenRouter } = require("@openrouter/sdk");
 const { GoogleGenAI } = require("@google/genai");
+const { createTTSAudio } = require("../services/elevenlabs.services");
+const { sendAudioToSimli } = require("../services/sendAudioToSimli");
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API,
@@ -74,7 +79,7 @@ const prepareScript = asyncHandler(async (req, res) => {
 
   // Embed query
   const embeddedQuery = await genAI.models.embedContent({
-    model: "gemini-embedding-2",
+    model: process.env.EMBEDDING_MODEL,
     contents: query,
     config: {
       outputDimensionality: 1536,
@@ -162,41 +167,75 @@ const prepareScript = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, finalScript, "Final Script!"));
 });
 
+// const generateSOPVideo = asyncHandler(async (req, res) => {
+//   const orgId = req.user.id;
+//   if (!req.body || Object.keys(req.body).length === 0) {
+//     throw new ApiError(400, "Request Body is Empty");
+//   }
+
+//   const { script, avatar_id, voice_id } = req.body;
+
+//   const newSop = {
+//     orgId,
+//     videoScript: script,
+//   };
+
+//   const data = await Sop.create(newSop);
+
+//   const videoGenerationFields = {
+//     avatar_id,
+//     script,
+//     voice_id,
+//     orgId,
+//   };
+
+//   const response = await generateHeygenAvatarVideo(videoGenerationFields);
+
+//   const videoId = response?.video_id;
+//   data.videoId = videoId;
+//   await data.save();
+
+//   res.json(
+//     new ApiResponse(
+//       200,
+//       { success: true, videoId },
+//       "SOP video generation started!",
+//     ),
+//   );
+// });
+
 const generateSOPVideo = asyncHandler(async (req, res) => {
   const orgId = req.user.id;
-  if (!req.body || Object.keys(req.body).length === 0) {
-    throw new ApiError(400, "Request Body is Empty");
-  }
+  const io = req.app.get("io");
 
-  const { script, avatar_id, voice_id } = req.body;
+  const { script, avatar_id } = req.body;
 
   const newSop = {
     orgId,
     videoScript: script,
+    videoUrl: null,
   };
 
   const data = await Sop.create(newSop);
 
-  const videoGenerationFields = {
-    avatar_id,
-    script,
-    voice_id,
-    orgId,
-  };
+  const audioBuffer = await createTTSAudio(script);
+  const simliResponse = await sendAudioToSimli(audioBuffer, avatar_id);
 
-  const response = await generateHeygenAvatarVideo(videoGenerationFields);
+  const videoId = crypto.randomUUID();
 
-  const videoId = response?.video_id;
+  const videoUrl = simliResponse?.mp4_url;
+
   data.videoId = videoId;
+  // data.videoUrl = videoUrl;
   await data.save();
 
-  res.json(
-    new ApiResponse(
-      200,
-      { success: true, videoId },
-      "SOP video generation started!",
-    ),
-  );
+  checkVideoReady(videoId, videoUrl, io);
+
+  return res.json({
+    success: true,
+    videoId,
+    message: "SOP video generation started! We'll notify you when it's ready.",
+  });
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {

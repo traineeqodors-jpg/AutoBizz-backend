@@ -203,15 +203,12 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     const chatResponse = await openrouter.chat.send({
       chatRequest: {
         model: process.env.CALL_MODEL,
+        temperature: 0.2,
         messages: [
           {
             role: "system",
             content: systemPrompt,
           },
-          // {
-          //   role: "user",
-          //   content: `Context:\n${contexts}\n\nQuestion:\n${query}`,
-          // },
           {
             role: "user",
             content: `

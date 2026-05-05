@@ -11,9 +11,15 @@ const { uploads } = require("../utils/multer");
 /**
  * All document routes restricted strictly to the Organization/Owner
  */
-router.post("/upload-docs", verifyJWT, authorizeRoles("owner"), uploads.single("file"), uploadDocuments);
+router.post(
+  "/upload-docs",
+  verifyJWT,
+  authorizeRoles("owner"),
+  uploads.single("file"),
+  uploadDocuments,
+);
 
-router.get("/my-documents", verifyJWT,authorizeRoles("owner"), getMyDocuments);
+router.get("/my-documents", verifyJWT, authorizeRoles("owner"), getMyDocuments);
 
 router.delete("/:id", verifyJWT, authorizeRoles("owner"), deleteDocument);
 

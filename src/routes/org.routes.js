@@ -36,8 +36,8 @@ router.post("/login", validate(loginSchema), orgLogin);
 // Update Org Details
 router.put(
   "/",
-  uploadImage.single("file"),
   verifyJWT,
+  uploadImage.single("file"),
   validate(updateOrgSchema),
   editOrg,
 );

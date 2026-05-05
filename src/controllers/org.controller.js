@@ -13,6 +13,7 @@ const { sendQueryMail } = require("../services/emailServices");
 const Organization = db.Organization;
 const Employee = db.Employee;
 const { Op } = require("sequelize");
+const { cloudinary } = require("../config/cloudinary");
 
 const generateAccessRefreshToken = async (id) => {
   try {
@@ -187,21 +188,16 @@ const editOrg = asyncHandler(async (req, res) => {
   };
 
   if (req.file) {
-    if (org.profileImage) {
-      const relativePath = org.profileImage.startsWith("/")
-        ? org.profileImage.slice(1)
-        : org.profileImage;
-
-      const oldPath = path.join(process.cwd(), relativePath);
-
+    if (org.profileImagePublicId) {
       try {
-        await fs.unlink(oldPath);
+        await cloudinary.uploader.destroy(org.profileImagePublicId);
       } catch (err) {
-        console.error("Old profile image not found on disk:", oldPath);
+        console.error("Error deleting old image from Cloudinary:", err);
       }
     }
 
-    updateData.profileImage = `/public/${req.file.filename}`;
+    updateData.profileImage = req.file.path;
+    updateData.profileImagePublicId = req.file.filename;
   }
 
   await org.update(updateData);

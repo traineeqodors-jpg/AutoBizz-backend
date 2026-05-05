@@ -1,5 +1,6 @@
 "use strict";
 const db = require("../../db/models");
+const { cloudinary } = require("../config/cloudinary");
 const { upsertFileService } = require("../services/upsertVectorDoc");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
@@ -44,7 +45,8 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 
   const documentRecord = {
     docType: req.file?.mimetype,
-    docUrl: `/public/${req.file?.filename}`,
+    docUrl: req.file.path,
+    publicId: req.file.filename,
     originalName: req.file.originalname,
     orgId: parseInt(orgId),
     pineconeId: uuid,
@@ -128,21 +130,15 @@ const deleteDocument = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Document not found or access denied");
   }
 
-  const fileName = path.basename(document.docUrl);
-  const filePath = path.join(__dirname, "../../public", fileName);
-
   try {
-    await fs.unlink(filePath);
+    await cloudinary.uploader.destroy(document.publicId);
     await index.namespace(String(organizationId)).deleteMany({
       filter: {
         file_uuid: { $eq: document.pineconeId },
       },
     });
   } catch (err) {
-    console.error(
-      "File deletion failed, might not exist on disk:",
-      err.message,
-    );
+    console.error("File deletion failed", err.message);
   }
 
   await document.destroy();

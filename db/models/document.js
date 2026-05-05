@@ -20,6 +20,10 @@ module.exports = (sequelize, DataTypes) => {
       docUrl: DataTypes.STRING,
       originalName: DataTypes.STRING,
       orgId: DataTypes.INTEGER,
+      publicId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       pineconeId: {
         type: DataTypes.STRING,
         allowNull: true,

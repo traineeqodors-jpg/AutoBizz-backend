@@ -2,19 +2,23 @@ const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
 
 const { Ollama } = require("ollama");
 const ollama = new Ollama();
-const officeParser = require("officeparser");
+// const officeParser = require("officeparser");
+const { PDFParse } = require("pdf-parse");
 const { ApiError } = require("../utils/ApiError");
 const { GoogleGenAI } = require("@google/genai");
+const axios = require("axios");
 
 const genAI = new GoogleGenAI({});
 
 const upsertFileService = async ({ file, businessId, index, uuid }) => {
   try {
-    const ast = await officeParser.parseOffice(file.path);
-    const cleanText = ast
-      .toText()
-      .replace(/\s+/g, " ") // collapse multiple spaces/newlines
-      .trim();
+    // const ast = await officeParser.parseOffice(file.path);
+
+    const parser = new PDFParse({ url: file.path });
+
+    const result = await parser.getText();
+
+    const cleanText = result.text.replace(/[ \t]+/g, " ").trim();
 
     const splitter = new RecursiveCharacterTextSplitter({
       chunkSize: 500,
@@ -61,7 +65,6 @@ const upsertFileService = async ({ file, businessId, index, uuid }) => {
         file_uuid: uuid,
         chunk_index: i,
         total_chunks: chunks.length,
-        total_pages: Number(ast?.metadata?.pages || 0),
       },
     }));
 

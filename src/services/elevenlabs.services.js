@@ -73,4 +73,37 @@ const cleanOldAudio = (dir) => {
   });
 };
 
-module.exports = { generateAudio };
+const createTTSAudio = async (text) => {
+  if (!text) return null;
+
+  const speechText = text.replace(/\n/g, "... ");
+
+  try {
+    const response = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
+      outputFormat: "mp3_44100_128",
+      text: speechText,
+      modelId: "eleven_turbo_v2_5",
+      voice_settings: {
+        stability: 0.25,
+        similarity_boost: 0.7,
+        style: 0.8,
+        use_speaker_boost: true,
+      },
+    });
+
+    const chunks = [];
+
+    for await (const chunk of response) {
+      chunks.push(chunk);
+    }
+
+    const audioBuffer = Buffer.concat(chunks);
+
+    return audioBuffer;
+  } catch (error) {
+    console.error("ElevenLabs SDK Error:", error);
+    return null;
+  }
+};
+
+module.exports = { generateAudio, createTTSAudio };

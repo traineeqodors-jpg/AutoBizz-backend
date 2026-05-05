@@ -23,6 +23,63 @@ const client = twilio(
 const BASE_URL = process.env.BASE_URL;
 
 const Lead = db.Lead;
+const Organization = db.Organization;
+
+// Generate Phone number
+const generatePhoneNumber = async (req, res) => {
+  const orgId = req.user.id;
+
+  const areaCode = 212;
+  const countryCode = "US";
+
+  const org = await Organization.findByPk(orgId);
+  if (org.twilioPhoneNumber) {
+    throw new ApiError(400, "Organization already has an assigned number.");
+  }
+
+  // Search for available numbers (Filtering for Mobile/Local with Voice capabilities)
+  const availableNumbers = await client
+    .availablePhoneNumbers(countryCode)
+    .local.list({
+      areaCode: areaCode,
+      voiceEnabled: true,
+      smsEnabled: true,
+      limit: 1,
+    });
+
+  if (availableNumbers.length === 0) {
+    throw new ApiError(400, "No available numbers found for this criteria.");
+  }
+
+  const selectedNumber = availableNumbers[0].phoneNumber;
+
+  // Purchase the number and set the Webhook
+  // This will instantly deduct $1.15 (for US local) from your Twilio balance
+  const purchasedNumber = await client.incomingPhoneNumbers.create({
+    phoneNumber: selectedNumber,
+    friendlyName: `Org_${orgId}_Number`,
+    voiceUrl: `${process.env.BASE_URL}/api/voice?orgId=${orgId}`, // Your Global AI Webhook
+    voiceMethod: "POST",
+    statusCallback: `${process.env.BASE_URL}/api/voice/status`,
+  });
+
+  console.log("purchase number : ", purchasedNumber);
+
+  // Save the number and its SID to your database
+  org.twilioPhoneNumber = purchasedNumber.phoneNumber;
+  org.twilioNumberSid = purchasedNumber.sid;
+  await org.save();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        org.twilioPhoneNumber,
+        "Number purchased successfully",
+      ),
+    );
+};
 
 // Add Leads
 const addLead = asyncHandler(async (req, res) => {

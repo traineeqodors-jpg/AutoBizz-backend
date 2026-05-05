@@ -132,6 +132,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      profileImagePublicId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       googleRefreshToken: {
         type: DataTypes.STRING,
         allowNull: true,
