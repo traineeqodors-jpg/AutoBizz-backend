@@ -18,15 +18,14 @@ const me = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
-  const user = req.organization || req.employee;
-  const Model = req.organization ? Organization : Employee;
+  const isEmp = req.user?.orgId ? true : false;
+  const id = req.user?.id;
+  const Model = isEmp ? Employee : Organization;
 
-  if (user?.id) {
-    await Model.update(
-      { refreshToken: null },
-      { where: { id: user.id }, hooks: false },
-    );
-  }
+  await Model.update(
+    { refreshToken: null },
+    { where: { id: id }, hooks: false },
+  );
 
   return res
     .status(200)
@@ -36,9 +35,8 @@ const logout = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {},
-        `${req.organization ? "Organization" : "Employee"} logged out successfully`,
+        `${isEmp ? "Employee" : "Organization"} logged out successfully`,
       ),
     );
 });
-
 module.exports = { me, logout };
