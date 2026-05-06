@@ -50,6 +50,11 @@ const createEmployee = asyncHandler(async (req, res) => {
     await sendInvitationEmail(email, firstName, setupUrl);
   } catch (err) {
     console.error("Failed to send Email:", err);
+
+    // rollback employee (optional but clean)
+    await employee.destroy();
+
+    throw new ApiError(500, "Email failed. Please retry.");
   }
 
   const employeeData = employee.toJSON();

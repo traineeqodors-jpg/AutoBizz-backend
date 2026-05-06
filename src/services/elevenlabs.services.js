@@ -13,12 +13,11 @@ const generateAudio = async (text) => {
   // add natural pauses
   const speechText = text.replace(/\n/g, "... ");
 
-  // "rCmVtv8cYU60uhlsOo1M"
   try {
     const response = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
-      outputFormat: "mp3_44100_128",
+      outputFormat: "mp3_22050_32",
       text: speechText,
-      modelId: "eleven_turbo_v2_5",
+      modelId: "eleven_flash_v2",
       voice_settings: {
         stability: 0.25,
         similarity_boost: 0.7,
@@ -80,9 +79,9 @@ const createTTSAudio = async (text) => {
 
   try {
     const response = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
-      outputFormat: "mp3_44100_128",
+      outputFormat: "mp3_22050_32",
       text: speechText,
-      modelId: "eleven_turbo_v2_5",
+      modelId: "eleven_flash_v2",
       voice_settings: {
         stability: 0.25,
         similarity_boost: 0.7,

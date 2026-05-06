@@ -35,8 +35,8 @@ const io = new Server(server, {
     origin: [
       process.env.FRONTEND_URL,
       "https://9w7lghq0-3000.inc1.devtunnels.ms",
-      " https://dknjfbwx-3000.inc1.devtunnels.ms",
-      "  https://x0mxjhrq-3000.inc1.devtunnels.ms/",
+      "https://dknjfbwx-3000.inc1.devtunnels.ms",
+      "https://x0mxjhrq-3000.inc1.devtunnels.ms/",
       "http://localhost:3000",
       "http://192.168.0.37:3000",
       "http://192.168.0.40:3000",
@@ -51,8 +51,8 @@ app.use(
     origin: [
       process.env.FRONTEND_URL,
       "https://9w7lghq0-3000.inc1.devtunnels.ms",
-      " https://dknjfbwx-3000.inc1.devtunnels.ms",
-      "  https://x0mxjhrq-3000.inc1.devtunnels.ms/",
+      "https://dknjfbwx-3000.inc1.devtunnels.ms",
+      "https://x0mxjhrq-3000.inc1.devtunnels.ms/",
       "http://localhost:3000",
       "http://192.168.0.37:3000",
       "http://192.168.0.40:3000",

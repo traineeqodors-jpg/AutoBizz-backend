@@ -3,7 +3,10 @@ const { Model } = require("sequelize");
 const {
   addCalendarEvent,
 } = require("../../src/services/googleCalender.services");
-const { generateLeadToken, sendInterestEmail } = require("../../src/services/emailServices");
+const {
+  generateLeadToken,
+  sendInterestEmail,
+} = require("../../src/services/emailServices");
 module.exports = (sequelize, DataTypes) => {
   class Lead extends Model {
     /**
@@ -47,32 +50,32 @@ module.exports = (sequelize, DataTypes) => {
         afterBulkUpdate: (options) => {
           options.individualHooks = true;
         },
-        afterUpdate: async (lead , options) => {
-          if (lead.confidence_score >= 80 && !lead.meeting_scheduled) {
-            try {
-              const Organization = lead.sequelize.models.Organization;
+        // afterUpdate: async (lead , options) => {
+        //   if (lead.confidence_score >= 80 && !lead.meeting_scheduled) {
+        //     try {
+        //       const Organization = lead.sequelize.models.Organization;
 
-              const org = await Organization.findByPk(lead.orgId);
+        //       const org = await Organization.findByPk(lead.orgId);
 
-              if (!org || !org.googleRefreshToken) {
-                return;
-              }
+        //       if (!org || !org.googleRefreshToken) {
+        //         return;
+        //       }
 
-              const token = generateLeadToken(lead.id);
+        //       const token = generateLeadToken(lead.id);
 
-              console.log("Sending Mail")
+        //       console.log("Sending Mail")
 
-              await sendInterestEmail(
-                lead.email,
-                token,
-                org.businessName,
-                org.email,
-              );
-            } catch (error) {
-              console.error("Hook Automation Error:", error.message);
-            }
-          }
-        },
+        //       await sendInterestEmail(
+        //         lead.email,
+        //         token,
+        //         org.businessName,
+        //         org.email,
+        //       );
+        //     } catch (error) {
+        //       console.error("Hook Automation Error:", error.message);
+        //     }
+        //   }
+        // },
       },
     },
   );

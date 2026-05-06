@@ -183,6 +183,7 @@ const sendMeetingConfirmationEmail = async (
     console.log("SUCCESS:", info.response);
   } catch (error) {
     console.error("SMTP ERROR:", error);
+    throw error;
   }
 };
 
@@ -229,6 +230,7 @@ const sendResetPasswordLink = async (token, email, firstName = "User") => {
     });
   } catch (error) {
     console.error("SMTP ERROR:", error);
+    throw error;
   }
 };
 
@@ -345,6 +347,8 @@ const sendInvitationEmail = async (email, firstName, setupUrl) => {
     });
   } catch (error) {
     console.error("SMTP ERROR:", error);
+
+    throw error;
   }
 };
 

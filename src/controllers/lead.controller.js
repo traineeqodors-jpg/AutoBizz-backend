@@ -15,6 +15,7 @@ const { calculateLeadScore } = require("../services/rag.services");
 const {
   startQualificationBatch,
 } = require("../services/startQualificationBatch");
+const { handleHighIntentLead } = require("../services/leadAutomation.service");
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -409,6 +410,8 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
       order: [["createdAt", "ASC"]],
     });
 
+    if (!logs.length) return;
+
     // Build clean transcript
     const transcript = logs
       .map((l) => {
@@ -416,7 +419,6 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
         return `User: ${l.transcript}`;
       })
       .join("\n");
-    if (!logs.length) return;
 
     // Run AI scoring
     const scoringResult = await calculateLeadScore(transcript);
@@ -442,54 +444,19 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
       { where: { id: leadId } },
     );
 
+    // fetch fresh lead + org
+    const lead = await db.Lead.findByPk(leadId);
+    const org = await db.Organization.findByPk(lead.orgId);
+
+    // Trigger automation (non-blocking recommended)
+    handleHighIntentLead(lead, org);
+
     // Emit realtime update
     const io = req.app.get("io");
     io.emit(`lead-scored-${orgId}`, { leadId, score });
-  } catch (error) {}
-
-  // (async () => {
-  //   try {
-  //     await db.CallLog.update(
-  //       {
-  //         status: CallStatus,
-  //         duration: CallDuration ? parseInt(CallDuration) : 0,
-  //       },
-  //       { where: { callSid: CallSid } },
-  //     );
-
-  //     const logs = await db.CallLog.findAll({
-  //       where: { callSid: CallSid },
-  //       order: [["createdAt", "ASC"]],
-  //     });
-
-  //     if (!logs || logs.length === 0) return;
-
-  //     const transcript = logs.map((l) => l.transcript || l.message).join("\n");
-
-  //     const scoringResult = await calculateLeadScore(transcript);
-
-  //     if (!scoringResult) {
-  //       throw new ApiError(400, "Error while Generating Score of Lead");
-  //     }
-
-  //     let leadScore = Number(scoringResult?.score);
-  //     if (isNaN(leadScore)) leadScore = 10;
-  //     leadScore = Math.round(leadScore);
-
-  //     await db.Lead.update(
-  //       {
-  //         confidence_score: leadScore,
-  //         status: leadScore > 70 ? "warm" : "contacted",
-  //       },
-  //       { where: { id: leadId }, individualHooks: true },
-  //     );
-
-  //     const io = req.app.get("io");
-  //     io.emit(`lead-scored-${orgId}`, { leadId, score: leadScore });
-  //   } catch (error) {
-  //     console.error(" Background Scoring Failed:", error.message);
-  //   }
-  // })();
+  } catch (error) {
+    console.error("Finalize scoring error:", error);
+  }
 });
 
 const callSelectedLead = asyncHandler(async (req, res) => {

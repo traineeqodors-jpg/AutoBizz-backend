@@ -1,9 +1,6 @@
 const db = require("../../db/models");
 const CallLog = db.CallLog;
 
-const { Ollama } = require("ollama");
-const ollama = new Ollama();
-
 const { OpenRouter } = require("@openrouter/sdk");
 const { GoogleGenAI } = require("@google/genai");
 
@@ -70,7 +67,7 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     // PINECONE SEARCH
     const queryResponse = await pineconeIndex.namespace(String(orgId)).query({
       vector: queryVector,
-      topK: 7,
+      topK: 4,
       includeMetadata: true,
     });
 
@@ -104,7 +101,7 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     if (callLog?.transcript) {
       memory = callLog.transcript
         .split("\n")
-        .slice(-12) // last 10 messages (IMPORTANT)
+        .slice(-8) // last 10 messages (IMPORTANT)
         .join("\n");
     }
 
@@ -200,34 +197,65 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
     console.log("Chat memory : ", memory);
 
     // OPENROUTER CALL
-    const chatResponse = await openrouter.chat.send({
-      chatRequest: {
-        model: process.env.CALL_MODEL,
+    // const chatResponse = await openrouter.chat.send({
+    //   chatRequest: {
+    //     model: process.env.CALL_MODEL,
+    //     temperature: 0.2,
+    //     messages: [
+    //       {
+    //         role: "system",
+    //         content: systemPrompt,
+    //       },
+    //       {
+    //         role: "user",
+    //         content: `
+    //         User Question:
+    //         ${query}
+
+    //         Conversation History:
+    //         ${memory}
+
+    //         Context:
+    //         ${contexts}
+    //         `,
+    //       },
+    //     ],
+    //   },
+    // });
+
+    const chatResponse = await genAI.models.generateContent({
+      model: process.env.FLASH_MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `
+                ${systemPrompt}
+
+                User Question:
+                ${query}
+
+                Conversation History:
+                ${memory}
+
+                Context:
+                ${contexts}
+              `,
+            },
+          ],
+        },
+      ],
+      config: {
         temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: `
-            User Question:
-            ${query}
-
-            Conversation History:
-            ${memory}
-
-            Context:
-            ${contexts}
-            `,
-          },
-        ],
+        maxOutputTokens: 300,
       },
     });
 
     // CLEAN OUTPUT
-    let cleanContent = chatResponse?.choices?.[0]?.message?.content || "";
+    // let cleanContent = chatResponse?.choices?.[0]?.message?.content || "";
+    let cleanContent =
+      chatResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     cleanContent = cleanContent
       .replace(/^(Response|Answer|Assistant):\s*/i, "")
@@ -277,7 +305,7 @@ Return only number.
     const response = await openrouter.chat.send({
       chatRequest: {
         model: process.env.CALL_MODEL,
-        temperature: 0, // 🔥 IMPORTANT (makes output stable)
+        temperature: 0,
         messages: [
           { role: "system", content: systemPrompt },
           {

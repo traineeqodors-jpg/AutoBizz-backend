@@ -1,4 +1,3 @@
-const { validate } = require("uuid");
 const db = require("../../db/models");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");

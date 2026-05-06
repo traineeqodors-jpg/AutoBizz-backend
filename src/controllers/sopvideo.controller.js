@@ -1,7 +1,5 @@
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
-const { Ollama } = require("ollama");
-const ollama = new Ollama();
 const { parse } = require("yaml");
 const fs = require("fs");
 const db = require("../../db/models");

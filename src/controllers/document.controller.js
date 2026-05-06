@@ -5,8 +5,6 @@ const { upsertFileService } = require("../services/upsertVectorDoc");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
-const path = require("path");
-const fs = require("fs").promises;
 
 const Document = db.Document;
 
@@ -98,7 +96,14 @@ const getMyDocuments = asyncHandler(async (req, res) => {
   const documents = await Document.findAll({
     where: { orgId: organizationId },
     order: [["createdAt", "DESC"]],
-    attributes: ["id", "docType", "pineconeId", "docUrl", "createdAt"],
+    attributes: [
+      "id",
+      "docType",
+      "pineconeId",
+      "docUrl",
+      "originalName",
+      "createdAt",
+    ],
   });
 
   if (!documents) {

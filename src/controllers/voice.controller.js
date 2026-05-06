@@ -31,6 +31,8 @@ const initiateCall = asyncHandler(async (req, res) => {
   const welcomeText = "Hello! How can I help you today?";
   const leadId = lead.id;
 
+  console.log("sending lead id : ", leadId);
+
   await safeLog(req.body, welcomeText, "AI", orgId, leadId);
 
   res.type("text/xml").send(createGatherResponse(welcomeText, orgId, leadId));

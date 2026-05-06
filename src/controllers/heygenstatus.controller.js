@@ -1,4 +1,3 @@
-const crypto = require("crypto");
 const { asyncHandler } = require("../utils/asyncHandler");
 const db = require("../../db/models");
 const path = require("path");
@@ -33,7 +32,6 @@ const getVideoStatus = asyncHandler(async (req, res) => {
       );
 
       io.emit("video_updated", videoData);
-      
 
       const dir = path.join(__dirname, "videos");
       if (!fs.existsSync(dir)) fs.mkdirSync(dir);

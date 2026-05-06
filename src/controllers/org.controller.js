@@ -1,13 +1,11 @@
 "use strict";
-const Api = require("twilio/lib/rest/Api");
 const db = require("../../db/models");
 const { oauth2Client } = require("../services/googleCalender.services");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { comparePassword } = require("../utils/authHelper");
-const jwt = require("jsonwebtoken");
-const path = require("path");
+
 const { sendQueryMail } = require("../services/emailServices");
 
 const Organization = db.Organization;
