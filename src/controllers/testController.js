@@ -41,15 +41,15 @@ const testChat = asyncHandler(async (req, res) => {
   // -----------------------------
   // 4. OPTIONAL AUDIO
   // -----------------------------
-  // const audioFile = await generateAudio(aiText);
+  const audioFile = await generateAudio(aiText);
 
   return res.json({
     success: true,
     data: {
       reply: aiText,
-      // audio: audioFile
-      //   ? `${process.env.BASE_URL}/static/audio/${audioFile}`
-      //   : null,
+      audio: audioFile
+        ? `${process.env.BASE_URL}/static/audio/${audioFile}`
+        : null,
     },
   });
 });

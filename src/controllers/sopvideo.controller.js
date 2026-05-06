@@ -207,7 +207,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
   const orgId = req.user.id;
   const io = req.app.get("io");
 
-  const { script, avatar_id } = req.body;
+  const { script, avatar_id, voice_id } = req.body;
 
   const newSop = {
     orgId,
@@ -217,11 +217,15 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
 
   const data = await Sop.create(newSop);
 
-  const audioBuffer = await createTTSAudio(script);
+  const audioBuffer = await createTTSAudio(script, voice_id);
+
+  if (!audioBuffer) {
+    throw new Error("TTS generation failed");
+  }
+
   const simliResponse = await sendAudioToSimli(audioBuffer, avatar_id);
 
   const videoId = crypto.randomUUID();
-
   const videoUrl = simliResponse?.mp4_url;
 
   data.videoId = videoId;
