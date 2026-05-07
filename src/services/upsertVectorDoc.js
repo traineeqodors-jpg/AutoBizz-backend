@@ -37,19 +37,19 @@ const upsertFileService = async ({ file, businessId, index, uuid }) => {
     //   input: chunks,
     // });
 
-    const embeddings = await Promise.all(
-      chunks.map(async (chunk) => {
-        const res = await genAI.models.embedContent({
-          model: process.env.EMBEDDING_MODEL,
-          contents: chunk,
-          config: {
-            outputDimensionality: 1536,
-          },
-        });
+    const embeddings = [];
 
-        return res.embeddings[0].values;
-      }),
-    );
+    for (const chunk of chunks) {
+      const res = await genAI.models.embedContent({
+        model: process.env.EMBEDDING_MODEL,
+        contents: chunk,
+        config: {
+          outputDimensionality: 1536,
+        },
+      });
+
+      embeddings.push(res.embeddings[0].values);
+    }
 
     // safety check
     if (!embeddings || embeddings.length !== chunks.length) {

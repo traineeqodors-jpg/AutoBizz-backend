@@ -23,7 +23,7 @@ const sopVideoRouter = require("./src/routes/sop.routes.js");
 const scriptGenRouter = require("./src/routes/script.routes.js");
 const webhooksHeygen = require("./src/webhooks/heygenstatus.webhook.js");
 
-const { initPinecone } = require("./src/config/pinecone.js");
+const { initPinecone, pc } = require("./src/config/pinecone.js");
 
 const PORT = process.env.PORT;
 
@@ -36,7 +36,7 @@ const io = new Server(server, {
       process.env.FRONTEND_URL,
       "https://9w7lghq0-3000.inc1.devtunnels.ms",
       "https://dknjfbwx-3000.inc1.devtunnels.ms",
-      "https://x0mxjhrq-3000.inc1.devtunnels.ms/",
+      "https://x0mxjhrq-3000.inc1.devtunnels.ms",
       "http://localhost:3000",
       "http://192.168.0.37:3000",
       "http://192.168.0.40:3000",
@@ -52,7 +52,7 @@ app.use(
       process.env.FRONTEND_URL,
       "https://9w7lghq0-3000.inc1.devtunnels.ms",
       "https://dknjfbwx-3000.inc1.devtunnels.ms",
-      "https://x0mxjhrq-3000.inc1.devtunnels.ms/",
+      "https://x0mxjhrq-3000.inc1.devtunnels.ms",
       "http://localhost:3000",
       "http://192.168.0.37:3000",
       "http://192.168.0.40:3000",
@@ -133,6 +133,8 @@ const startServer = async () => {
   try {
     const index = await initPinecone();
     app.locals.pineconeIndex = index;
+
+    app.locals.pinecone = pc;
 
     server.listen(PORT, () => {
       console.log(`Server is running at :${PORT}`);

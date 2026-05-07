@@ -4,6 +4,7 @@ const {
   getAllVideos,
   deleteVideo,
   testDownload,
+  editVideoTitle,
 } = require("../controllers/sopvideo.controller");
 const { verifyJWT, authorizeRoles } = require("../middlewares/auth.middleware");
 const router = express.Router();
@@ -15,6 +16,10 @@ router
 router
   .route("/getAllSopVideos")
   .get(verifyJWT, authorizeRoles("employee", "owner", "sales"), getAllVideos);
+
+router
+  .route("/:videoId")
+  .put(verifyJWT, authorizeRoles("owner"), editVideoTitle);
 
 router.route("/downloadVideo").post(testDownload);
 

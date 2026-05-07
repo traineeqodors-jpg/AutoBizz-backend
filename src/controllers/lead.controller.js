@@ -448,7 +448,7 @@ const finalizeCallAndScore = asyncHandler(async (req, res) => {
     const lead = await db.Lead.findByPk(leadId);
     const org = await db.Organization.findByPk(lead.orgId);
 
-    // Trigger automation (non-blocking recommended)
+    // Trigger automation
     handleHighIntentLead(lead, org);
 
     // Emit realtime update

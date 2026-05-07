@@ -86,9 +86,6 @@ const uploads = multer({
       "application/vnd.ms-excel",
       "application/csv",
       "text/x-csv",
-
-      // Text Files
-      "text/plain", // .txt
     ];
 
     const fileTypes = /jpeg|jpg|png|webp|svg|pdf|doc|docx|ppt|csv|txt|pptx/;

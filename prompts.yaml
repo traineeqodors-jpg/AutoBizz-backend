@@ -20,7 +20,7 @@ sop_scriptwriter:
      THE WRAP-UP (Closing):
      Summarize what was achieved.
      End with a friendly sign-off: "Thanks for watching, and we'll see you in the next guide!"
-    ###CONSTRAINTS
+    ###CONSTRAINTS0.
      SOURCE MATERIAL: Use ONLY the provided context. Do not invent steps.
      Directly give the response staring with the script, don't start with "Here is the script:", "Script" or similar things.
      Video duration: Under 1 minute.

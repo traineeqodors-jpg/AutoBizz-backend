@@ -3,6 +3,7 @@ const CallLog = db.CallLog;
 
 const { OpenRouter } = require("@openrouter/sdk");
 const { GoogleGenAI } = require("@google/genai");
+const { ApiError } = require("../utils/ApiError");
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API,
@@ -249,6 +250,7 @@ const getRagResponse = async (query, pineconeIndex, orgId, leadId) => {
       config: {
         temperature: 0.2,
         maxOutputTokens: 300,
+        reasoning: { enabled: true },
       },
     });
 

@@ -18,10 +18,15 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     );
   }
 
+  if (req.file.mimetype !== "application/pdf") {
+    await cloudinary.uploader.destroy(req.file.filename);
+    throw new ApiError(400, "Only PDF files are allowed.");
+  }
+
   const index = req.app.locals.pineconeIndex;
   const io = req.app.get("io");
 
-  const orgId = req.user?.ordId || req.user?.id;
+  const orgId = req.user?.orgId || req.user?.id;
   if (!orgId) {
     throw new ApiError(400, "Organization ID is required to link documents.");
   }
@@ -34,53 +39,57 @@ const uploadDocuments = asyncHandler(async (req, res) => {
   });
 
   if (existingDoc) {
+    await cloudinary.uploader.destroy(req.file.filename);
     throw new ApiError(409, "This document already exists!!.");
   }
 
   const uuid = crypto.randomUUID();
 
-  //AWS S3 Logic for generating url
-
-  const documentRecord = {
-    docType: req.file?.mimetype,
-    docUrl: req.file.path,
-    publicId: req.file.filename,
-    originalName: req.file.originalname,
-    orgId: parseInt(orgId),
-    pineconeId: uuid,
-  };
-
-  const savedDoc = await Document.create(documentRecord);
-
-  if (!savedDoc) {
-    throw new ApiError(403, "Error in Saving Document");
-  }
-
-  console.log(uuid);
-
   res.json(
-    new ApiResponse(201, savedDoc, "File uploaded. Processing started."),
+    new ApiResponse(
+      200,
+      { pineconeId: uuid },
+      "File received. Processing started.",
+    ),
   );
 
-  upsertFileService({ file: req.file, businessId: orgId, index, uuid })
-    .then(() => {
-      console.log("Emitting to:", `user_${req.user.id}`);
-
-      io.to(`user_${req.user.id}`).emit("document-status", {
-        uuid,
-        status: "completed",
-        message: "Document processed successfully",
-      });
-    })
-    .catch((error) => {
-      console.error(error);
-
-      io.to(`user_${req.user.id}`).emit("document-status", {
-        uuid,
-        status: "failed",
-        message: "Document processing failed",
-      });
+  try {
+    // process first
+    await upsertFileService({
+      file: req.file,
+      businessId: orgId,
+      index,
+      uuid,
     });
+
+    // save DB
+    await Document.create({
+      docType: req.file.mimetype,
+      docUrl: req.file.path,
+      publicId: req.file.filename,
+      originalName: req.file.originalname,
+      orgId: parseInt(orgId),
+      pineconeId: uuid,
+    });
+
+    console.log("Emmiting SOcket");
+
+    io.to(`user_${req.user.id}`).emit("document-status", {
+      uuid,
+      status: "completed",
+      message: "Document processed successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    await cloudinary.uploader.destroy(req.file.filename);
+
+    io.to(`user_${req.user.id}`).emit("document-status", {
+      uuid,
+      status: "failed",
+      message: "Processing failed. File not saved.",
+    });
+  }
 });
 
 const getMyDocuments = asyncHandler(async (req, res) => {

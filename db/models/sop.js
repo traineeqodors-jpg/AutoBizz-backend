@@ -1,7 +1,5 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Sop extends Model {
     /**
@@ -16,14 +14,22 @@ module.exports = (sequelize, DataTypes) => {
       });
     }
   }
-  Sop.init({
-    videoId : DataTypes.STRING,
-    videoScript: DataTypes.TEXT,
-    videoUrl: DataTypes.STRING,
-    orgId: DataTypes.INTEGER
-  }, {
-    sequelize,
-    modelName: 'Sop',
-  });
+  Sop.init(
+    {
+      videoId: DataTypes.STRING,
+      videoScript: DataTypes.TEXT,
+      videoUrl: DataTypes.STRING,
+      orgId: DataTypes.INTEGER,
+      videoTitle: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "Untitled SOP",
+      },
+    },
+    {
+      sequelize,
+      modelName: "Sop",
+    },
+  );
   return Sop;
 };

@@ -75,6 +75,7 @@ const prepareScript = asyncHandler(async (req, res) => {
   const promptConfig = parse(file).sop_scriptwriter;
 
   const index = req.app.locals.pineconeIndex;
+  const pc = req.app.locals.pinecone;
 
   // Embed query
   const embeddedQuery = await genAI.models.embedContent({
@@ -87,7 +88,7 @@ const prepareScript = asyncHandler(async (req, res) => {
 
   const queryVector = embeddedQuery.embeddings[0].values;
 
-  // Query Pinecone with higher recall
+  // Pinecone search
   const queryResponse = await index.namespace(String(businessId)).query({
     vector: queryVector,
     topK: 25,
@@ -99,43 +100,78 @@ const prepareScript = asyncHandler(async (req, res) => {
     includeMetadata: true,
   });
 
-  // Instead of hard threshold (0.5), use top-N after sorting
-  const matches = (queryResponse.matches || [])
-    .filter((m) => m.metadata?.chunk_text) // safety
-    .sort((a, b) => b.score - a.score) // highest first
-    .slice(0, 10); // take best 10
+  const rawMatches = (queryResponse.matches || []).filter(
+    (m) => m.metadata?.chunk_text,
+  );
 
-  if (!matches.length) {
+  if (!rawMatches.length) {
     return res
       .status(404)
       .json(new ApiResponse(404, null, "No relevant SOP documentation found."));
   }
 
-  // Extract chunks
-  const contextChunks = matches.map((m) => m.metadata.chunk_text);
+  // Extract documents for reranking
+  const documents = rawMatches.map((m) => m.metadata.chunk_text);
+
+  let rankedResults = [];
+
+  if (!pc?.inference) {
+    console.error("Pinecone inference missing");
+  }
+
+  // Pinecone RERANK
+  try {
+    const rerankResponse = await pc.inference.rerank({
+      model: "bge-reranker-v2-m3",
+      query,
+      documents,
+      topN: 8,
+      returnDocuments: true,
+    });
+
+    rankedResults = rerankResponse.data.map((r) => ({
+      score: r.score,
+      chunk: r.document.text,
+    }));
+
+    console.log(rankedResults);
+  } catch (err) {
+    console.error("Pinecone rerank failed:", err);
+
+    // FALLBACK
+    rankedResults = rawMatches
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map((m) => ({
+        score: m.score,
+        chunk: m.metadata.chunk_text,
+      }));
+  }
 
   // LIMIT CONTEXT SIZE
   const MAX_CONTEXT_CHARS = 12000;
 
   let contextText = "";
-  for (const chunk of contextChunks) {
-    if ((contextText + chunk).length > MAX_CONTEXT_CHARS) break;
-    contextText += chunk + "\n\n---\n\n";
+
+  for (const item of rankedResults) {
+    if ((contextText + item.chunk).length > MAX_CONTEXT_CHARS) break;
+    contextText += item.chunk + "\n\n---\n\n";
   }
 
   console.log(contextText);
 
-  // include user query in prompt
+  // Build prompt
   const userPrompt = `
-  User Query:
-  ${query}
+    User Query:
+    ${query}
 
-  Technical Documentation Context:
-  ${contextText}
-  `;
+    Technical Documentation Context:
+    ${contextText}
+    `;
 
   let chatResponse;
 
+  // LLM call
   try {
     chatResponse = await openrouter.chat.send({
       chatRequest: {
@@ -207,10 +243,11 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
   const orgId = req.user.id;
   const io = req.app.get("io");
 
-  const { script, avatar_id, voice_id } = req.body;
+  const { script, videoTitle, avatar_id, voice_id } = req.body;
 
   const newSop = {
     orgId,
+    videoTitle: videoTitle || "Untitled SOP",
     videoScript: script,
     videoUrl: null,
   };
@@ -226,6 +263,7 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
   const simliResponse = await sendAudioToSimli(audioBuffer, avatar_id);
 
   const videoId = crypto.randomUUID();
+
   const videoUrl = simliResponse?.mp4_url;
 
   data.videoId = videoId;
@@ -239,6 +277,35 @@ const generateSOPVideo = asyncHandler(async (req, res) => {
     videoId,
     message: "SOP video generation started! We'll notify you when it's ready.",
   });
+});
+
+const editVideoTitle = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { newTitle } = req.body;
+  const businessId = req?.user?.id;
+
+  if (!businessId) {
+    throw new ApiError(401, "Unauthorized: Organization ID missing");
+  }
+
+  const video = await Sop.findOne({
+    where: {
+      id: videoId,
+      orgId: businessId,
+    },
+  });
+
+  if (!video) {
+    throw new ApiError(
+      404,
+      "Video not found or you do not have permission to edit it",
+    );
+  }
+
+  video.videoTitle = newTitle || video.videoTitle;
+  await video.save();
+
+  return res.json(new ApiResponse(200, video, "Sop Video title updated"));
 });
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -306,4 +373,5 @@ module.exports = {
   getAllVideos,
   deleteVideo,
   testDownload,
+  editVideoTitle,
 };
