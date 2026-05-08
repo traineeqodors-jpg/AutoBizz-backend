@@ -35,7 +35,6 @@ const verifyJWT = async (req, res, next) => {
     }
 
     // If refresh token, validate & reissue access token
-
     if (refreshToken && !accessToken) {
       if (user.refreshToken !== refreshToken) {
         throw new ApiError(401, "Invalid refresh token");
@@ -45,8 +44,8 @@ const verifyJWT = async (req, res, next) => {
 
       res.cookie("accessToken", newAccessToken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         path: "/",
         maxAge: 24 * 60 * 60 * 1000,
       });
